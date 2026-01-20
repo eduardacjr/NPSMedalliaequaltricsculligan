@@ -390,7 +390,6 @@ if df_geral is not None and df_classificado is not None:
                     textinfo='label+percent',
                     textposition='outside'
                 )])
-                # AJUSTE: Margens maiores (l=120, r=120) para diminuir gráfico
                 fig.update_layout(margin=dict(t=40, b=20, l=120, r=120), title_text="Distribuição por Motivo", title_font=dict(size=14))
                 c2.plotly_chart(fig, use_container_width=True)
                 
@@ -412,29 +411,79 @@ if df_geral is not None and df_classificado is not None:
         st.subheader("Classificação NPS")
         tp_kp = st.radio("Visão:", ["Geral", "Pós OS", "Instalação"], horizontal=True, key="rd_kp")
         df_kp = filtrar_por_programa(df_class_filt, 'Programa de Pesquisa', tp_kp)
+        
         if not df_kp.empty:
-            c1, c2 = st.columns([3, 1.5])
-            res = df_kp.groupby(['Categorização Primária', 'Subcategorização Primária']).size().reset_index(name='Qtd').sort_values('Qtd', ascending=False)
-            res['%'] = (res['Qtd']/res['Qtd'].sum()*100).map('{:.1f}%'.format)
-            c1.dataframe(res, use_container_width=True, hide_index=True)
+            # 1. LAYOUT ALTERADO: 50% / 50%
+            c1, c2 = st.columns([1, 1])
             
-            piz = df_kp['Categorização Primária'].value_counts().reset_index()
-            piz.columns = ['Cat', 'Qtd']
-            if len(piz)>6: piz = pd.concat([piz.iloc[:6], pd.DataFrame({'Cat':['Outros'], 'Qtd':[piz.iloc[6:]['Qtd'].sum()]})])
+            with c1:
+                st.markdown("**Resumo por Categoria**")
+                res = df_kp.groupby(['Categorização Primária', 'Subcategorização Primária']).size().reset_index(name='Qtd').sort_values('Qtd', ascending=False)
+                res['%'] = (res['Qtd']/res['Qtd'].sum()*100).map('{:.1f}%'.format)
+                st.dataframe(res, use_container_width=True, hide_index=True)
             
-            fig = go.Figure(data=[go.Pie(
-                labels=piz['Cat'], 
-                values=piz['Qtd'], 
-                hole=.5, 
-                marker=dict(colors=CORES_BLUES), 
-                showlegend=False,
-                textinfo='label+percent',
-                textposition='outside'
-            )])
-            # AJUSTE: Margens maiores (l=120, r=120) para diminuir gráfico
-            fig.update_layout(title_text="Distribuição Macro", margin=dict(t=40, b=30, l=120, r=120), title_font=dict(size=14))
-            c2.plotly_chart(fig, use_container_width=True)
-        else: st.warning("Sem dados.")
+            with c2:
+                if 'Categorização Primária' in df_kp.columns:
+                    piz = df_kp['Categorização Primária'].value_counts().reset_index()
+                    piz.columns = ['Cat', 'Qtd']
+                    if len(piz)>6: piz = pd.concat([piz.iloc[:6], pd.DataFrame({'Cat':['Outros'], 'Qtd':[piz.iloc[6:]['Qtd'].sum()]})])
+                    
+                    fig = go.Figure(data=[go.Pie(
+                        labels=piz['Cat'], 
+                        values=piz['Qtd'], 
+                        hole=.5, 
+                        marker=dict(colors=CORES_BLUES), 
+                        showlegend=False,
+                        textinfo='label+percent',
+                        textposition='outside'
+                    )])
+                    # MARGEM NORMALIZADA PARA FICAR GRANDE (l=20, r=20)
+                    fig.update_layout(title_text="Distribuição Macro", margin=dict(t=40, b=20, l=20, r=20), title_font=dict(size=14))
+                    st.plotly_chart(fig, use_container_width=True)
+
+            # 2. FILTROS DINÂMICOS
+            st.divider()
+            st.subheader("🔎 Filtro de Detalhamento e Extrato")
+            
+            # Garante que temos a coluna
+            if 'Categorização Primária' in df_kp.columns:
+                # Filtro 1
+                opcoes_cat = sorted(df_kp['Categorização Primária'].astype(str).unique())
+                sel_cat_prim = st.multiselect("Selecione a Categoria Primária:", opcoes_cat)
+                
+                # Filtragem intermediária
+                if sel_cat_prim:
+                    df_filtered = df_kp[df_kp['Categorização Primária'].isin(sel_cat_prim)]
+                else:
+                    df_filtered = df_kp # Se vazio, considera tudo ou nada? Geralmente tudo para permitir filtro secundário
+                
+                # Filtro 2 (Baseado no 1)
+                if 'Subcategorização Primária' in df_filtered.columns:
+                    opcoes_sub = sorted(df_filtered['Subcategorização Primária'].astype(str).unique())
+                    sel_cat_sec = st.multiselect("Selecione a Subcategoria:", opcoes_sub)
+                    
+                    if sel_cat_sec:
+                        df_final_extrato = df_filtered[df_filtered['Subcategorização Primária'].isin(sel_cat_sec)]
+                    else:
+                        df_final_extrato = df_filtered
+                else:
+                    df_final_extrato = df_filtered
+
+                # 3. TABELA DE EXTRATO (COM COMENTÁRIOS)
+                st.markdown("#### 📄 Extrato da Seleção")
+                
+                # Merge se necessário
+                if 'Comentário NPS Ecohouse' not in df_final_extrato.columns and 'Num OS' in df_final_extrato.columns:
+                     if 'Num OS' in df_geral.columns:
+                        temp_coments = df_geral[['Num OS', 'Comentário NPS Ecohouse']].drop_duplicates('Num OS')
+                        df_final_extrato = df_final_extrato.merge(temp_coments, on='Num OS', how='left')
+
+                cols_display = ['Data', 'Num OS', 'Categorização Primária', 'Subcategorização Primária', 'Comentário NPS Ecohouse']
+                cols_present = [c for c in cols_display if c in df_final_extrato.columns]
+                
+                st.dataframe(df_final_extrato[cols_present].sort_values('Data', ascending=False), use_container_width=True, hide_index=True)
+
+        else: st.warning("Sem dados classificados para os filtros globais.")
 
     # 5. 5Star
     with tab_tecnico:
