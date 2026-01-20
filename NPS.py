@@ -6,7 +6,7 @@ import os
 
 # 1. Configuração da Página
 st.set_page_config(
-    page_title="Dashboard NPS - Diretoria",
+    page_title="NPS Culligan",
     page_icon="",
     layout="wide"
 )
@@ -288,7 +288,6 @@ if df_geral is not None and df_classificado is not None:
             
             fig.add_trace(go.Scatter(x=nps_raw.index.astype(str), y=[pivot_contagem.sum().max() * 1.1] * len(nps_raw), text=nps_text, mode='text+markers', textposition='top center', name='NPS Score', textfont=dict(size=14, color='black'), marker=dict(size=1, color='rgba(0,0,0,0)')))
             
-            # Formatar Eixo X
             vals_x = df_chart['Mes'].unique()
             text_x = []
             for v in vals_x:
@@ -413,7 +412,6 @@ if df_geral is not None and df_classificado is not None:
         df_kp = filtrar_por_programa(df_class_filt, 'Programa de Pesquisa', tp_kp)
         
         if not df_kp.empty:
-            # 1. LAYOUT ALTERADO: 50% / 50%
             c1, c2 = st.columns([1, 1])
             
             with c1:
@@ -437,27 +435,28 @@ if df_geral is not None and df_classificado is not None:
                         textinfo='label+percent',
                         textposition='outside'
                     )])
-                    # MARGEM NORMALIZADA PARA FICAR GRANDE (l=20, r=20)
-                    fig.update_layout(title_text="Distribuição Macro", margin=dict(t=40, b=20, l=20, r=20), title_font=dict(size=14))
+                    
+                    # --- AJUSTE: Altura e Margens ---
+                    fig.update_layout(
+                        title_text="Distribuição Macro", 
+                        margin=dict(t=40, b=20, l=60, r=60), # Margem moderada
+                        height=350,                          # Altura fixa reduzida
+                        title_font=dict(size=14)
+                    )
                     st.plotly_chart(fig, use_container_width=True)
 
-            # 2. FILTROS DINÂMICOS
             st.divider()
             st.subheader("🔎 Filtro de Detalhamento e Extrato")
             
-            # Garante que temos a coluna
             if 'Categorização Primária' in df_kp.columns:
-                # Filtro 1
                 opcoes_cat = sorted(df_kp['Categorização Primária'].astype(str).unique())
                 sel_cat_prim = st.multiselect("Selecione a Categoria Primária:", opcoes_cat)
                 
-                # Filtragem intermediária
                 if sel_cat_prim:
                     df_filtered = df_kp[df_kp['Categorização Primária'].isin(sel_cat_prim)]
                 else:
-                    df_filtered = df_kp # Se vazio, considera tudo ou nada? Geralmente tudo para permitir filtro secundário
+                    df_filtered = df_kp 
                 
-                # Filtro 2 (Baseado no 1)
                 if 'Subcategorização Primária' in df_filtered.columns:
                     opcoes_sub = sorted(df_filtered['Subcategorização Primária'].astype(str).unique())
                     sel_cat_sec = st.multiselect("Selecione a Subcategoria:", opcoes_sub)
@@ -469,10 +468,8 @@ if df_geral is not None and df_classificado is not None:
                 else:
                     df_final_extrato = df_filtered
 
-                # 3. TABELA DE EXTRATO (COM COMENTÁRIOS)
                 st.markdown("#### 📄 Extrato da Seleção")
                 
-                # Merge se necessário
                 if 'Comentário NPS Ecohouse' not in df_final_extrato.columns and 'Num OS' in df_final_extrato.columns:
                      if 'Num OS' in df_geral.columns:
                         temp_coments = df_geral[['Num OS', 'Comentário NPS Ecohouse']].drop_duplicates('Num OS')
@@ -502,7 +499,6 @@ if df_geral is not None and df_classificado is not None:
             with cm:
                 criar_card_kpi("Média Geral", f"{media_val:.2f}", KPI_BG_5ST)
             
-            # --- AJUSTE: EIXO X COM NOMES DE MÊS ---
             df_evol = df_tc.groupby('Mes_Ano_Sort')['Avaliação do Técnico'].mean().reset_index()
             fig = px.bar(df_evol, x='Mes_Ano_Sort', y='Avaliação do Técnico', title="Evolução Mensal da Nota", text_auto='.2f', color_discrete_sequence=['#08306b'])
             
@@ -731,4 +727,3 @@ TAREFA ANALÍTICA:
 
 else:
     st.error(f"Arquivos {ARQUIVO_GERAL} e {ARQUIVO_CLASSIFICADO} não encontrados.")
-
