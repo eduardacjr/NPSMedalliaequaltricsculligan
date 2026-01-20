@@ -7,7 +7,7 @@ import os
 # 1. Configuração da Página
 st.set_page_config(
     page_title="Dashboard NPS - Diretoria",
-    page_icon="📊",
+    page_icon="",
     layout="wide"
 )
 
@@ -731,3 +731,4 @@ TAREFA ANALÍTICA:
 
 else:
     st.error(f"Arquivos {ARQUIVO_GERAL} e {ARQUIVO_CLASSIFICADO} não encontrados.")
+
