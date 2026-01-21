@@ -6,8 +6,8 @@ import os
 
 # 1. Configuração da Página
 st.set_page_config(
-    page_title="NPS Culligan",
-    page_icon="",
+    page_title="Dashboard NPS - Diretoria",
+    page_icon="📊",
     layout="wide"
 )
 
@@ -31,6 +31,7 @@ KPI_BG_5ST = "#e8f5e9"   # Verde claro
 # Constantes de nomes de arquivo
 ARQUIVO_GERAL = "NPS Geral.xlsx"
 ARQUIVO_CLASSIFICADO = "NPS Classificado.xlsx"
+ARQUIVO_DATA = "data_atualizacao.txt"
 
 # Mapa Global de Meses para formatação
 MAPA_MESES_GLOBAL = {
@@ -57,6 +58,12 @@ def calcular_nps_score(df_input):
 def fmt_milhar(valor):
     if pd.isna(valor): return "-"
     return f"{int(valor):,}".replace(",", ".")
+
+def ler_data_atualizacao():
+    if os.path.exists(ARQUIVO_DATA):
+        with open(ARQUIVO_DATA, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    return "Data n/d"
 
 # 2. Funções de Carregamento
 @st.cache_data
@@ -196,6 +203,11 @@ def gerar_texto_franquias(df_target):
 
 # --- Interface Principal ---
 st.sidebar.title("📊 Dashboard de Indicadores NPS")
+
+# --- 1) DATA DE ATUALIZAÇÃO ---
+data_atualizacao = ler_data_atualizacao()
+st.sidebar.markdown(f"**Atualizado em:** {data_atualizacao}")
+st.sidebar.markdown("---")
 
 df_geral = load_data_geral(ARQUIVO_GERAL)
 df_classificado = load_data_classificado(ARQUIVO_CLASSIFICADO)
@@ -392,13 +404,35 @@ if df_geral is not None and df_classificado is not None:
                 fig.update_layout(margin=dict(t=40, b=20, l=120, r=120), title_text="Distribuição por Motivo", title_font=dict(size=14))
                 c2.plotly_chart(fig, use_container_width=True)
                 
-                # MERGE PARA TRAZER COMENTÁRIOS SE NECESSÁRIO
-                if 'Comentário NPS Ecohouse' not in df_fin.columns and 'Num OS' in df_fin.columns:
-                     if 'Num OS' in df_geral.columns:
-                        temp_coments = df_geral[['Num OS', 'Comentário NPS Ecohouse']].drop_duplicates('Num OS')
-                        df_fin = df_fin.merge(temp_coments, on='Num OS', how='left')
+                # --- 3) MERGE PARA TRAZER FR, TECNICO E COMENTARIOS NA ABA FRANQUIA ---
+                # Garante que vai buscar Franquia, Nome do Técnico e Comentário do Geral se não tiver no classificado ou se precisar completar
+                cols_to_merge_frq = []
+                if 'Num OS' in df_fin.columns and 'Num OS' in df_geral.columns:
+                    # Lista de colunas desejadas do Geral
+                    desired_cols = ['Num OS', 'Comentário NPS Ecohouse']
+                    if 'Franquia' not in df_fin.columns: desired_cols.append('Franquia')
+                    if 'Nome do Técnico' not in df_fin.columns: desired_cols.append('Nome do Técnico')
+                    
+                    # Se já tem a coluna, mas queremos garantir ou preencher, podemos fazer merge e tratar depois
+                    # Simplificação: Puxar tudo que é util do Geral
+                    cols_source = ['Num OS', 'Comentário NPS Ecohouse', 'Franquia', 'Nome do Técnico']
+                    # Filtra apenas o que existe no df_geral
+                    cols_source = [c for c in cols_source if c in df_geral.columns]
+                    
+                    temp_geral_info = df_geral[cols_source].drop_duplicates('Num OS')
+                    
+                    # Merge left
+                    df_fin = df_fin.merge(temp_geral_info, on='Num OS', how='left', suffixes=('', '_geral'))
+                    
+                    # Resolve conflito de nomes se houver (ex: Franquia vs Franquia_geral)
+                    if 'Franquia_geral' in df_fin.columns:
+                        df_fin['Franquia'] = df_fin['Franquia'].fillna(df_fin['Franquia_geral'])
+                    if 'Nome do Técnico_geral' in df_fin.columns:
+                        df_fin['Nome do Técnico'] = df_fin['Nome do Técnico_geral']
+                    if 'Comentário NPS Ecohouse_geral' in df_fin.columns:
+                        df_fin['Comentário NPS Ecohouse'] = df_fin['Comentário NPS Ecohouse'].fillna(df_fin['Comentário NPS Ecohouse_geral'])
 
-                cols_ver = ['Data', 'Num OS', 'Categorização Primária', 'Subcategorização Primária', 'Comentário NPS Ecohouse']
+                cols_ver = ['Data', 'Num OS', 'Franquia', 'Nome do Técnico', 'Categorização Primária', 'Subcategorização Primária', 'Comentário NPS Ecohouse']
                 cols_fin = [c for c in cols_ver if c in df_fin.columns]
                 
                 st.dataframe(df_fin[cols_fin].sort_values('Data', ascending=False), use_container_width=True, hide_index=True)
@@ -435,12 +469,10 @@ if df_geral is not None and df_classificado is not None:
                         textinfo='label+percent',
                         textposition='outside'
                     )])
-                    
-                    # --- AJUSTE: Altura e Margens ---
                     fig.update_layout(
                         title_text="Distribuição Macro", 
-                        margin=dict(t=40, b=20, l=60, r=60), # Margem moderada
-                        height=350,                          # Altura fixa reduzida
+                        margin=dict(t=40, b=20, l=60, r=60), 
+                        height=350,
                         title_font=dict(size=14)
                     )
                     st.plotly_chart(fig, use_container_width=True)
@@ -470,12 +502,26 @@ if df_geral is not None and df_classificado is not None:
 
                 st.markdown("#### 📄 Extrato da Seleção")
                 
-                if 'Comentário NPS Ecohouse' not in df_final_extrato.columns and 'Num OS' in df_final_extrato.columns:
-                     if 'Num OS' in df_geral.columns:
-                        temp_coments = df_geral[['Num OS', 'Comentário NPS Ecohouse']].drop_duplicates('Num OS')
-                        df_final_extrato = df_final_extrato.merge(temp_coments, on='Num OS', how='left')
+                # --- 2) MERGE PARA TRAZER FR, TECNICO E COMENTARIOS NA ABA CLASSIFICAÇÃO ---
+                if 'Num OS' in df_final_extrato.columns and 'Num OS' in df_geral.columns:
+                    # Seleciona colunas extras necessárias do Geral
+                    cols_extra = ['Num OS', 'Comentário NPS Ecohouse', 'Franquia', 'Nome do Técnico']
+                    cols_extra = [c for c in cols_extra if c in df_geral.columns]
+                    
+                    temp_data = df_geral[cols_extra].drop_duplicates('Num OS')
+                    
+                    # Merge
+                    df_final_extrato = df_final_extrato.merge(temp_data, on='Num OS', how='left', suffixes=('', '_geral'))
+                    
+                    # Limpeza de sufixos se houver colisão
+                    if 'Franquia_geral' in df_final_extrato.columns:
+                        df_final_extrato['Franquia'] = df_final_extrato['Franquia'].fillna(df_final_extrato['Franquia_geral'])
+                    if 'Nome do Técnico_geral' in df_final_extrato.columns:
+                        df_final_extrato['Nome do Técnico'] = df_final_extrato['Nome do Técnico_geral']
+                    if 'Comentário NPS Ecohouse_geral' in df_final_extrato.columns:
+                        df_final_extrato['Comentário NPS Ecohouse'] = df_final_extrato['Comentário NPS Ecohouse'].fillna(df_final_extrato['Comentário NPS Ecohouse_geral'])
 
-                cols_display = ['Data', 'Num OS', 'Categorização Primária', 'Subcategorização Primária', 'Comentário NPS Ecohouse']
+                cols_display = ['Data', 'Num OS', 'Franquia', 'Nome do Técnico', 'Categorização Primária', 'Subcategorização Primária', 'Comentário NPS Ecohouse']
                 cols_present = [c for c in cols_display if c in df_final_extrato.columns]
                 
                 st.dataframe(df_final_extrato[cols_present].sort_values('Data', ascending=False), use_container_width=True, hide_index=True)
