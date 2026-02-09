@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import os
+from io import BytesIO # Necessário para criar o arquivo Excel na memória
 
 # 1. Configuração da Página
 st.set_page_config(
@@ -64,6 +65,14 @@ def ler_data_atualizacao():
         with open(ARQUIVO_DATA, "r", encoding="utf-8") as f:
             return f.read().strip()
     return "Data n/d"
+
+# Função para converter DataFrame em Excel Bytes para download
+def convert_df_to_excel(df):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Dados')
+    processed_data = output.getvalue()
+    return processed_data
 
 # 2. Funções de Carregamento
 @st.cache_data
@@ -300,6 +309,7 @@ if df_geral is not None and df_classificado is not None:
             
             fig.add_trace(go.Scatter(x=nps_raw.index.astype(str), y=[pivot_contagem.sum().max() * 1.1] * len(nps_raw), text=nps_text, mode='text+markers', textposition='top center', name='NPS Score', textfont=dict(size=14, color='black'), marker=dict(size=1, color='rgba(0,0,0,0)')))
             
+            # Formatar Eixo X
             vals_x = df_chart['Mes'].unique()
             text_x = []
             for v in vals_x:
@@ -331,6 +341,17 @@ if df_geral is not None and df_classificado is not None:
                     df_d = pd.DataFrame([s_qtd.apply(lambda x: f"{int(x)}").tolist() + [f"{int(s_qtd.sum())}", f"{s_qtd.mean():.1f}".replace('.', ',')],
                                          s_pct.apply(lambda x: f"{x:.1f}%".replace('.', ',')).tolist() + ["-", "-"]], columns=list(s_qtd.index.astype(str)) + ['Soma', 'Média'], index=["Qtd", "%"])
                     st.dataframe(df_d, use_container_width=True)
+                    
+                    # BOTÃO DOWNLOAD
+                    excel_data = convert_df_to_excel(df_d)
+                    st.download_button(
+                        label=f"📥 Baixar Tabela (.xlsx)",
+                        data=excel_data,
+                        file_name=f"Tabela_{nome}_{titulo_secao}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key=f"btn_down_{nome}_{titulo_secao}"
+                    )
+
             with col_a: criar_tabela_cat_simples("Promotor", "🟢", "green")
             with col_b: criar_tabela_cat_simples("Neutro", "🟡", "#b58900")
             with col_c: criar_tabela_cat_simples("Detrator", "🔴", "red")
@@ -369,7 +390,19 @@ if df_geral is not None and df_classificado is not None:
                     df_c = df_cons[df_cons['Categorização Primária'] == cat]
                     piv_s = df_c.pivot_table(index='Subcategorização Primária', columns='Mes_Nome', values='ID', aggfunc='count', fill_value=0).reindex(columns=cols_ord, fill_value=0)
                     piv_s['Total'] = piv_s.sum(axis=1)
-                    st.dataframe(piv_s.nlargest(5, 'Total').drop(columns=['Total']).style.background_gradient(cmap='Blues', axis=None).format("{:.0f}"), use_container_width=True)
+                    
+                    df_top5 = piv_s.nlargest(5, 'Total').drop(columns=['Total'])
+                    st.dataframe(df_top5.style.background_gradient(cmap='Blues', axis=None).format("{:.0f}"), use_container_width=True)
+                    
+                    # BOTÃO DOWNLOAD
+                    excel_data = convert_df_to_excel(df_top5)
+                    st.download_button(
+                        label=f"📥 Baixar {cat} (.xlsx)",
+                        data=excel_data,
+                        file_name=f"Top5_{cat}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key=f"btn_down_{cat}"
+                    )
         else: st.warning("Sem dados.")
 
     # 3. Franquias
@@ -387,55 +420,57 @@ if df_geral is not None and df_classificado is not None:
                 df_t = df_fin['Subcategorização Primária'].value_counts().reset_index()
                 df_t.columns = ['Motivo', 'Quantidade']
                 df_t['%'] = (df_t['Quantidade']/df_t['Quantidade'].sum()*100).map('{:.1f}%'.format)
-                c1.dataframe(df_t, use_container_width=True, hide_index=True)
                 
-                df_g = df_t.copy()
-                if len(df_g)>5: df_g = pd.concat([df_g.iloc[:5], pd.DataFrame({'Motivo':['Outros'], 'Quantidade':[df_g.iloc[5:]['Quantidade'].sum()]})])
+                with c1:
+                    st.dataframe(df_t, use_container_width=True, hide_index=True)
+                    # BOTÃO DOWNLOAD
+                    excel_data_t = convert_df_to_excel(df_t)
+                    st.download_button(
+                        label="📥 Baixar Resumo (.xlsx)",
+                        data=excel_data_t,
+                        file_name="Resumo_Franquias.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key="btn_down_frq_resumo"
+                    )
                 
-                fig = go.Figure(data=[go.Pie(
-                    labels=df_g['Motivo'], 
-                    values=df_g['Quantidade'], 
-                    hole=0.5, 
-                    marker=dict(colors=CORES_BLUES), 
-                    showlegend=False,
-                    textinfo='label+percent',
-                    textposition='outside'
-                )])
-                fig.update_layout(margin=dict(t=40, b=20, l=120, r=120), title_text="Distribuição por Motivo", title_font=dict(size=14))
-                c2.plotly_chart(fig, use_container_width=True)
+                with c2:
+                    df_g = df_t.copy()
+                    if len(df_g)>5: df_g = pd.concat([df_g.iloc[:5], pd.DataFrame({'Motivo':['Outros'], 'Quantidade':[df_g.iloc[5:]['Quantidade'].sum()]})])
+                    
+                    fig = go.Figure(data=[go.Pie(
+                        labels=df_g['Motivo'], 
+                        values=df_g['Quantidade'], 
+                        hole=0.5, 
+                        marker=dict(colors=CORES_BLUES), 
+                        showlegend=False,
+                        textinfo='label+percent',
+                        textposition='outside'
+                    )])
+                    fig.update_layout(margin=dict(t=40, b=20, l=120, r=120), title_text="Distribuição por Motivo", title_font=dict(size=14))
+                    st.plotly_chart(fig, use_container_width=True)
                 
-                # --- 3) MERGE PARA TRAZER FR, TECNICO E COMENTARIOS NA ABA FRANQUIA ---
-                # Garante que vai buscar Franquia, Nome do Técnico e Comentário do Geral se não tiver no classificado ou se precisar completar
-                cols_to_merge_frq = []
-                if 'Num OS' in df_fin.columns and 'Num OS' in df_geral.columns:
-                    # Lista de colunas desejadas do Geral
-                    desired_cols = ['Num OS', 'Comentário NPS Ecohouse']
-                    if 'Franquia' not in df_fin.columns: desired_cols.append('Franquia')
-                    if 'Nome do Técnico' not in df_fin.columns: desired_cols.append('Nome do Técnico')
-                    
-                    # Se já tem a coluna, mas queremos garantir ou preencher, podemos fazer merge e tratar depois
-                    # Simplificação: Puxar tudo que é util do Geral
-                    cols_source = ['Num OS', 'Comentário NPS Ecohouse', 'Franquia', 'Nome do Técnico']
-                    # Filtra apenas o que existe no df_geral
-                    cols_source = [c for c in cols_source if c in df_geral.columns]
-                    
-                    temp_geral_info = df_geral[cols_source].drop_duplicates('Num OS')
-                    
-                    # Merge left
-                    df_fin = df_fin.merge(temp_geral_info, on='Num OS', how='left', suffixes=('', '_geral'))
-                    
-                    # Resolve conflito de nomes se houver (ex: Franquia vs Franquia_geral)
-                    if 'Franquia_geral' in df_fin.columns:
-                        df_fin['Franquia'] = df_fin['Franquia'].fillna(df_fin['Franquia_geral'])
-                    if 'Nome do Técnico_geral' in df_fin.columns:
-                        df_fin['Nome do Técnico'] = df_fin['Nome do Técnico_geral']
-                    if 'Comentário NPS Ecohouse_geral' in df_fin.columns:
-                        df_fin['Comentário NPS Ecohouse'] = df_fin['Comentário NPS Ecohouse'].fillna(df_fin['Comentário NPS Ecohouse_geral'])
+                # MERGE PARA TRAZER COMENTÁRIOS SE NECESSÁRIO
+                if 'Comentário NPS Ecohouse' not in df_fin.columns and 'Num OS' in df_fin.columns:
+                     if 'Num OS' in df_geral.columns:
+                        temp_coments = df_geral[['Num OS', 'Comentário NPS Ecohouse']].drop_duplicates('Num OS')
+                        df_fin = df_fin.merge(temp_coments, on='Num OS', how='left')
 
                 cols_ver = ['Data', 'Num OS', 'Franquia', 'Nome do Técnico', 'Categorização Primária', 'Subcategorização Primária', 'Comentário NPS Ecohouse']
                 cols_fin = [c for c in cols_ver if c in df_fin.columns]
                 
-                st.dataframe(df_fin[cols_fin].sort_values('Data', ascending=False), use_container_width=True, hide_index=True)
+                df_extract = df_fin[cols_fin].sort_values('Data', ascending=False)
+                st.dataframe(df_extract, use_container_width=True, hide_index=True)
+                
+                # BOTÃO DOWNLOAD EXTRATO
+                excel_data_ext = convert_df_to_excel(df_extract)
+                st.download_button(
+                    label="📥 Baixar Extrato Detalhado (.xlsx)",
+                    data=excel_data_ext,
+                    file_name="Extrato_Franquias.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="btn_down_frq_extract"
+                )
+
             else: st.warning("Sem dados.")
         else: st.warning("Sem dados.")
 
@@ -453,6 +488,16 @@ if df_geral is not None and df_classificado is not None:
                 res = df_kp.groupby(['Categorização Primária', 'Subcategorização Primária']).size().reset_index(name='Qtd').sort_values('Qtd', ascending=False)
                 res['%'] = (res['Qtd']/res['Qtd'].sum()*100).map('{:.1f}%'.format)
                 st.dataframe(res, use_container_width=True, hide_index=True)
+                
+                # BOTÃO DOWNLOAD
+                excel_data_res = convert_df_to_excel(res)
+                st.download_button(
+                    label="📥 Baixar Resumo (.xlsx)",
+                    data=excel_data_res,
+                    file_name="Resumo_Classificacao.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="btn_down_class_resumo"
+                )
             
             with c2:
                 if 'Categorização Primária' in df_kp.columns:
@@ -502,18 +547,15 @@ if df_geral is not None and df_classificado is not None:
 
                 st.markdown("#### 📄 Extrato da Seleção")
                 
-                # --- 2) MERGE PARA TRAZER FR, TECNICO E COMENTARIOS NA ABA CLASSIFICAÇÃO ---
+                # MERGE PARA TRAZER FR, TECNICO E COMENTARIOS
                 if 'Num OS' in df_final_extrato.columns and 'Num OS' in df_geral.columns:
-                    # Seleciona colunas extras necessárias do Geral
                     cols_extra = ['Num OS', 'Comentário NPS Ecohouse', 'Franquia', 'Nome do Técnico']
                     cols_extra = [c for c in cols_extra if c in df_geral.columns]
                     
                     temp_data = df_geral[cols_extra].drop_duplicates('Num OS')
                     
-                    # Merge
                     df_final_extrato = df_final_extrato.merge(temp_data, on='Num OS', how='left', suffixes=('', '_geral'))
                     
-                    # Limpeza de sufixos se houver colisão
                     if 'Franquia_geral' in df_final_extrato.columns:
                         df_final_extrato['Franquia'] = df_final_extrato['Franquia'].fillna(df_final_extrato['Franquia_geral'])
                     if 'Nome do Técnico_geral' in df_final_extrato.columns:
@@ -524,7 +566,18 @@ if df_geral is not None and df_classificado is not None:
                 cols_display = ['Data', 'Num OS', 'Franquia', 'Nome do Técnico', 'Categorização Primária', 'Subcategorização Primária', 'Comentário NPS Ecohouse']
                 cols_present = [c for c in cols_display if c in df_final_extrato.columns]
                 
-                st.dataframe(df_final_extrato[cols_present].sort_values('Data', ascending=False), use_container_width=True, hide_index=True)
+                df_display = df_final_extrato[cols_present].sort_values('Data', ascending=False)
+                st.dataframe(df_display, use_container_width=True, hide_index=True)
+                
+                # BOTÃO DOWNLOAD EXTRATO
+                excel_data_display = convert_df_to_excel(df_display)
+                st.download_button(
+                    label="📥 Baixar Extrato Filtrado (.xlsx)",
+                    data=excel_data_display,
+                    file_name="Extrato_Classificacao_Filtrado.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="btn_down_class_filtered"
+                )
 
         else: st.warning("Sem dados classificados para os filtros globais.")
 
@@ -574,8 +627,35 @@ if df_geral is not None and df_classificado is not None:
             df_tf = df_tc if sel_t == 'Todos' else df_tc[df_tc['Nome do Técnico'] == sel_t]
             
             ind = df_tf.groupby(['Nome do Técnico', 'Franquia']).agg(Media=('Avaliação do Técnico', 'mean'), Qtd=('Avaliação do Técnico', 'count')).reset_index()
-            st.dataframe(ind[ind['Qtd']>0].sort_values('Media', ascending=False).style.format({'Media':'{:.2f}'}).background_gradient(subset=['Media'], cmap='RdYlGn', vmin=1, vmax=5), use_container_width=True)
-            st.dataframe(df_tf[['Data da resposta local', 'Nome do Técnico', 'Avaliação do Técnico', 'Num OS', 'Franquia']].sort_values('Data da resposta local', ascending=False), use_container_width=True, hide_index=True)
+            
+            # Tabela Ranking
+            df_rank = ind[ind['Qtd']>0].sort_values('Media', ascending=False)
+            st.dataframe(df_rank.style.format({'Media':'{:.2f}'}).background_gradient(subset=['Media'], cmap='RdYlGn', vmin=1, vmax=5), use_container_width=True)
+            
+            # BOTÃO DOWNLOAD RANKING
+            excel_data_rank = convert_df_to_excel(df_rank)
+            st.download_button(
+                label="📥 Baixar Ranking (.xlsx)",
+                data=excel_data_rank,
+                file_name="Ranking_Tecnicos.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="btn_down_rank"
+            )
+
+            # Tabela Detalhada
+            df_det_tec = df_tf[['Data da resposta local', 'Nome do Técnico', 'Avaliação do Técnico', 'Num OS', 'Franquia']].sort_values('Data da resposta local', ascending=False)
+            st.dataframe(df_det_tec, use_container_width=True, hide_index=True)
+            
+            # BOTÃO DOWNLOAD DETALHE TÉCNICO
+            excel_data_det_tec = convert_df_to_excel(df_det_tec)
+            st.download_button(
+                label="📥 Baixar Extrato de Notas (.xlsx)",
+                data=excel_data_det_tec,
+                file_name="Extrato_Notas_Tecnicos.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="btn_down_det_tec"
+            )
+
         else: st.warning("Sem dados.")
 
     # 6. Detalhes
@@ -590,10 +670,29 @@ if df_geral is not None and df_classificado is not None:
             else:
                 if not rg.empty:
                     st.dataframe(rg, use_container_width=True, hide_index=True)
+                    # BOTÃO DOWNLOAD
+                    excel_data_rg = convert_df_to_excel(rg)
+                    st.download_button(
+                        label="📥 Baixar Dados Gerais (.xlsx)",
+                        data=excel_data_rg,
+                        file_name=f"OS_{clean}_Geral.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key="btn_down_os_geral"
+                    )
+
                     if 'Comentário NPS Ecohouse' in rg.columns: st.info(f"Comentário: {rg.iloc[0]['Comentário NPS Ecohouse']}")
                 if not rc.empty:
                     st.markdown(f"**Classificação:** `{rc.iloc[0].get('Categorização Primária','-')}` > `{rc.iloc[0].get('Subcategorização Primária','-')}`")
                     st.dataframe(rc, use_container_width=True, hide_index=True)
+                    # BOTÃO DOWNLOAD
+                    excel_data_rc = convert_df_to_excel(rc)
+                    st.download_button(
+                        label="📥 Baixar Classificação (.xlsx)",
+                        data=excel_data_rc,
+                        file_name=f"OS_{clean}_Classificado.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key="btn_down_os_class"
+                    )
 
     # 7. Análises Avançadas
     with tab_analises:
