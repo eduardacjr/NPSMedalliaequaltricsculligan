@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import os
-from io import BytesIO # Necessário para criar o arquivo Excel na memória
+from io import BytesIO 
 
 # 1. Configuração da Página
 st.set_page_config(
@@ -25,9 +25,9 @@ CORES_BLUES = [
 ]
 
 # Cores Pastéis para os KPIs
-KPI_BG_NPS = "#e3f2fd"   # Azul bem claro
-KPI_BG_VOL = "#f5f5f5"   # Cinza claro
-KPI_BG_5ST = "#e8f5e9"   # Verde claro
+KPI_BG_NPS = "#e3f2fd"   
+KPI_BG_VOL = "#f5f5f5"   
+KPI_BG_5ST = "#e8f5e9"   
 
 # Constantes de nomes de arquivo
 ARQUIVO_GERAL = "NPS Geral.xlsx"
@@ -98,6 +98,20 @@ def load_data_geral(file_path):
         
         df['Mes_Num'] = df['Data da resposta local'].dt.month
         df['Mes_Nome'] = df['Mes_Num'].map(MAPA_MESES_GLOBAL)
+        
+        # --- MAPEAMENTO DA FORMA JURÍDICA (NOVO) ---
+        if 'Forma Jurídica' in df.columns:
+            def map_segmento(val):
+                if pd.isna(val): return 'Não Informado'
+                v_str = str(val).strip()
+                if v_str == 'Não atribuído': return 'PF'
+                if v_str == 'P1': return 'PME'
+                if v_str == 'C1': return 'Corporativo'
+                return v_str
+            df['Segmento'] = df['Forma Jurídica'].apply(map_segmento)
+        else:
+            df['Segmento'] = 'Não Informado'
+            
         return df
     except Exception as e:
         st.error(f"Erro ao ler {file_path}: {e}")
@@ -118,12 +132,11 @@ def load_data_classificado(file_path):
         if 'Num OS' in df.columns:
             df['Num OS'] = df['Num OS'].astype(str).str.replace('.0', '', regex=False)
             
-        # Garante coluna Classificacao
         if 'NPS Purificador BTP' in df.columns:
              df['NPS Purificador BTP'] = pd.to_numeric(df['NPS Purificador BTP'], errors='coerce')
              df['Classificacao'] = df['NPS Purificador BTP'].apply(classificar_nps)
         else:
-             df['Classificacao'] = None # Placeholder
+             df['Classificacao'] = None 
              
         return df
     except Exception as e:
@@ -213,7 +226,7 @@ def gerar_texto_franquias(df_target):
 # --- Interface Principal ---
 st.sidebar.title("📊 Dashboard de Indicadores NPS")
 
-# --- 1) DATA DE ATUALIZAÇÃO ---
+# --- DATA DE ATUALIZAÇÃO ---
 data_atualizacao = ler_data_atualizacao()
 st.sidebar.markdown(f"**Atualizado em:** {data_atualizacao}")
 st.sidebar.markdown("---")
@@ -223,8 +236,16 @@ df_classificado = load_data_classificado(ARQUIVO_CLASSIFICADO)
 
 if df_geral is not None and df_classificado is not None:
     
+    # GARANTIR QUE SEGMENTO ESTEJA NO CLASSIFICADO PARA OS FILTROS
+    if 'Num OS' in df_geral.columns and 'Num OS' in df_classificado.columns:
+        if 'Segmento' in df_geral.columns and 'Segmento' not in df_classificado.columns:
+            temp_seg = df_geral[['Num OS', 'Segmento']].drop_duplicates('Num OS')
+            df_classificado = df_classificado.merge(temp_seg, on='Num OS', how='left')
+            df_classificado['Segmento'] = df_classificado['Segmento'].fillna('Não Informado')
+
     # --- FILTROS GLOBAIS ---
     st.sidebar.header("Filtros Globais")
+    
     anos_disponiveis = sorted(df_geral['Ano'].dropna().unique().astype(int))
     opcoes_anos = ['Todos'] + [str(a) for a in anos_disponiveis]
     ano_selecionado = st.sidebar.selectbox("Selecione o Ano:", opcoes_anos)
@@ -233,11 +254,21 @@ if df_geral is not None and df_classificado is not None:
     opcoes_meses = ['Todos'] + meses_ordem
     meses_selecionados = st.sidebar.multiselect("Selecione o(s) Mês(es):", options=opcoes_meses, default=['Todos'])
 
+    # NOVO FILTRO: Segmento
+    st.sidebar.markdown("---")
+    if 'Segmento' in df_geral.columns:
+        segmentos_disp = sorted([str(s) for s in df_geral['Segmento'].dropna().unique()])
+        segmentos_selecionados = st.sidebar.multiselect("Selecione o Segmento:", options=['Todos'] + segmentos_disp, default=['Todos'])
+    else:
+        segmentos_selecionados = ['Todos']
+
+    st.sidebar.markdown("---")
+
+    # FILTRO: Franquias
     franquias_geral = set(df_geral['Franquia'].dropna().unique())
     franquias_class = set(df_classificado['Franquia'].dropna().unique()) if 'Franquia' in df_classificado.columns else set()
     todas_franquias = sorted(list(franquias_geral.union(franquias_class)))
     
-    st.sidebar.markdown("---")
     usar_todas_franquias = st.sidebar.checkbox("Selecionar Todas as Franquias", value=True)
     if usar_todas_franquias:
         franquias_selecionadas = todas_franquias
@@ -257,6 +288,10 @@ if df_geral is not None and df_classificado is not None:
     if "Todos" not in meses_selecionados:
         df_geral_filt = df_geral_filt[df_geral_filt['Mes_Nome'].isin(meses_selecionados)]
         if 'Mes_Nome' in df_class_filt.columns: df_class_filt = df_class_filt[df_class_filt['Mes_Nome'].isin(meses_selecionados)]
+
+    if "Todos" not in segmentos_selecionados:
+        df_geral_filt = df_geral_filt[df_geral_filt['Segmento'].isin(segmentos_selecionados)]
+        if 'Segmento' in df_class_filt.columns: df_class_filt = df_class_filt[df_class_filt['Segmento'].isin(segmentos_selecionados)]
 
     if franquias_selecionadas:
         df_geral_filt = df_geral_filt[df_geral_filt['Franquia'].isin(franquias_selecionadas)]
@@ -309,7 +344,6 @@ if df_geral is not None and df_classificado is not None:
             
             fig.add_trace(go.Scatter(x=nps_raw.index.astype(str), y=[pivot_contagem.sum().max() * 1.1] * len(nps_raw), text=nps_text, mode='text+markers', textposition='top center', name='NPS Score', textfont=dict(size=14, color='black'), marker=dict(size=1, color='rgba(0,0,0,0)')))
             
-            # Formatar Eixo X
             vals_x = df_chart['Mes'].unique()
             text_x = []
             for v in vals_x:
@@ -342,7 +376,6 @@ if df_geral is not None and df_classificado is not None:
                                          s_pct.apply(lambda x: f"{x:.1f}%".replace('.', ',')).tolist() + ["-", "-"]], columns=list(s_qtd.index.astype(str)) + ['Soma', 'Média'], index=["Qtd", "%"])
                     st.dataframe(df_d, use_container_width=True)
                     
-                    # BOTÃO DOWNLOAD
                     excel_data = convert_df_to_excel(df_d)
                     st.download_button(
                         label=f"📥 Baixar Tabela (.xlsx)",
@@ -394,7 +427,6 @@ if df_geral is not None and df_classificado is not None:
                     df_top5 = piv_s.nlargest(5, 'Total').drop(columns=['Total'])
                     st.dataframe(df_top5.style.background_gradient(cmap='Blues', axis=None).format("{:.0f}"), use_container_width=True)
                     
-                    # BOTÃO DOWNLOAD
                     excel_data = convert_df_to_excel(df_top5)
                     st.download_button(
                         label=f"📥 Baixar {cat} (.xlsx)",
@@ -412,7 +444,7 @@ if df_geral is not None and df_classificado is not None:
         df_fr = filtrar_por_programa(df_class_filt, 'Programa de Pesquisa', tp_frq)
         if not df_fr.empty and 'Franquia' in df_fr.columns:
             frqs = sorted(df_fr['Franquia'].dropna().unique())
-            sel_fr = st.multiselect("Franquias:", ['Todas']+frqs, default=['Todas'])
+            sel_fr = st.multiselect("Franquias (Visão Local):", ['Todas']+frqs, default=['Todas'])
             df_fin = df_fr if "Todas" in sel_fr else df_fr[df_fr['Franquia'].isin(sel_fr)]
             
             if not df_fin.empty and 'Subcategorização Primária' in df_fin.columns:
@@ -423,7 +455,6 @@ if df_geral is not None and df_classificado is not None:
                 
                 with c1:
                     st.dataframe(df_t, use_container_width=True, hide_index=True)
-                    # BOTÃO DOWNLOAD
                     excel_data_t = convert_df_to_excel(df_t)
                     st.download_button(
                         label="📥 Baixar Resumo (.xlsx)",
@@ -449,19 +480,25 @@ if df_geral is not None and df_classificado is not None:
                     fig.update_layout(margin=dict(t=40, b=20, l=120, r=120), title_text="Distribuição por Motivo", title_font=dict(size=14))
                     st.plotly_chart(fig, use_container_width=True)
                 
-                # MERGE PARA TRAZER COMENTÁRIOS SE NECESSÁRIO
-                if 'Comentário NPS Ecohouse' not in df_fin.columns and 'Num OS' in df_fin.columns:
-                     if 'Num OS' in df_geral.columns:
-                        temp_coments = df_geral[['Num OS', 'Comentário NPS Ecohouse']].drop_duplicates('Num OS')
-                        df_fin = df_fin.merge(temp_coments, on='Num OS', how='left')
+                # MERGE PARA TRAZER FR, SEGMENTO, TECNICO E COMENTARIOS
+                if 'Num OS' in df_fin.columns and 'Num OS' in df_geral.columns:
+                    cols_source = ['Num OS', 'Comentário NPS Ecohouse', 'Franquia', 'Nome do Técnico', 'Segmento']
+                    cols_source = [c for c in cols_source if c in df_geral.columns]
+                    
+                    temp_geral_info = df_geral[cols_source].drop_duplicates('Num OS')
+                    df_fin = df_fin.merge(temp_geral_info, on='Num OS', how='left', suffixes=('', '_geral'))
+                    
+                    if 'Franquia_geral' in df_fin.columns: df_fin['Franquia'] = df_fin['Franquia'].fillna(df_fin['Franquia_geral'])
+                    if 'Nome do Técnico_geral' in df_fin.columns: df_fin['Nome do Técnico'] = df_fin['Nome do Técnico_geral']
+                    if 'Segmento_geral' in df_fin.columns: df_fin['Segmento'] = df_fin['Segmento'].fillna(df_fin['Segmento_geral'])
+                    if 'Comentário NPS Ecohouse_geral' in df_fin.columns: df_fin['Comentário NPS Ecohouse'] = df_fin['Comentário NPS Ecohouse'].fillna(df_fin['Comentário NPS Ecohouse_geral'])
 
-                cols_ver = ['Data', 'Num OS', 'Franquia', 'Nome do Técnico', 'Categorização Primária', 'Subcategorização Primária', 'Comentário NPS Ecohouse']
+                cols_ver = ['Data', 'Num OS', 'Franquia', 'Segmento', 'Nome do Técnico', 'Categorização Primária', 'Subcategorização Primária', 'Comentário NPS Ecohouse']
                 cols_fin = [c for c in cols_ver if c in df_fin.columns]
                 
                 df_extract = df_fin[cols_fin].sort_values('Data', ascending=False)
                 st.dataframe(df_extract, use_container_width=True, hide_index=True)
                 
-                # BOTÃO DOWNLOAD EXTRATO
                 excel_data_ext = convert_df_to_excel(df_extract)
                 st.download_button(
                     label="📥 Baixar Extrato Detalhado (.xlsx)",
@@ -489,7 +526,6 @@ if df_geral is not None and df_classificado is not None:
                 res['%'] = (res['Qtd']/res['Qtd'].sum()*100).map('{:.1f}%'.format)
                 st.dataframe(res, use_container_width=True, hide_index=True)
                 
-                # BOTÃO DOWNLOAD
                 excel_data_res = convert_df_to_excel(res)
                 st.download_button(
                     label="📥 Baixar Resumo (.xlsx)",
@@ -547,29 +583,25 @@ if df_geral is not None and df_classificado is not None:
 
                 st.markdown("#### 📄 Extrato da Seleção")
                 
-                # MERGE PARA TRAZER FR, TECNICO E COMENTARIOS
+                # MERGE PARA TRAZER FR, SEGMENTO, TECNICO E COMENTARIOS
                 if 'Num OS' in df_final_extrato.columns and 'Num OS' in df_geral.columns:
-                    cols_extra = ['Num OS', 'Comentário NPS Ecohouse', 'Franquia', 'Nome do Técnico']
+                    cols_extra = ['Num OS', 'Comentário NPS Ecohouse', 'Franquia', 'Nome do Técnico', 'Segmento']
                     cols_extra = [c for c in cols_extra if c in df_geral.columns]
                     
                     temp_data = df_geral[cols_extra].drop_duplicates('Num OS')
-                    
                     df_final_extrato = df_final_extrato.merge(temp_data, on='Num OS', how='left', suffixes=('', '_geral'))
                     
-                    if 'Franquia_geral' in df_final_extrato.columns:
-                        df_final_extrato['Franquia'] = df_final_extrato['Franquia'].fillna(df_final_extrato['Franquia_geral'])
-                    if 'Nome do Técnico_geral' in df_final_extrato.columns:
-                        df_final_extrato['Nome do Técnico'] = df_final_extrato['Nome do Técnico_geral']
-                    if 'Comentário NPS Ecohouse_geral' in df_final_extrato.columns:
-                        df_final_extrato['Comentário NPS Ecohouse'] = df_final_extrato['Comentário NPS Ecohouse'].fillna(df_final_extrato['Comentário NPS Ecohouse_geral'])
+                    if 'Franquia_geral' in df_final_extrato.columns: df_final_extrato['Franquia'] = df_final_extrato['Franquia'].fillna(df_final_extrato['Franquia_geral'])
+                    if 'Nome do Técnico_geral' in df_final_extrato.columns: df_final_extrato['Nome do Técnico'] = df_final_extrato['Nome do Técnico_geral']
+                    if 'Segmento_geral' in df_final_extrato.columns: df_final_extrato['Segmento'] = df_final_extrato['Segmento'].fillna(df_final_extrato['Segmento_geral'])
+                    if 'Comentário NPS Ecohouse_geral' in df_final_extrato.columns: df_final_extrato['Comentário NPS Ecohouse'] = df_final_extrato['Comentário NPS Ecohouse'].fillna(df_final_extrato['Comentário NPS Ecohouse_geral'])
 
-                cols_display = ['Data', 'Num OS', 'Franquia', 'Nome do Técnico', 'Categorização Primária', 'Subcategorização Primária', 'Comentário NPS Ecohouse']
+                cols_display = ['Data', 'Num OS', 'Franquia', 'Segmento', 'Nome do Técnico', 'Categorização Primária', 'Subcategorização Primária', 'Comentário NPS Ecohouse']
                 cols_present = [c for c in cols_display if c in df_final_extrato.columns]
                 
                 df_display = df_final_extrato[cols_present].sort_values('Data', ascending=False)
                 st.dataframe(df_display, use_container_width=True, hide_index=True)
                 
-                # BOTÃO DOWNLOAD EXTRATO
                 excel_data_display = convert_df_to_excel(df_display)
                 st.download_button(
                     label="📥 Baixar Extrato Filtrado (.xlsx)",
@@ -628,11 +660,9 @@ if df_geral is not None and df_classificado is not None:
             
             ind = df_tf.groupby(['Nome do Técnico', 'Franquia']).agg(Media=('Avaliação do Técnico', 'mean'), Qtd=('Avaliação do Técnico', 'count')).reset_index()
             
-            # Tabela Ranking
             df_rank = ind[ind['Qtd']>0].sort_values('Media', ascending=False)
             st.dataframe(df_rank.style.format({'Media':'{:.2f}'}).background_gradient(subset=['Media'], cmap='RdYlGn', vmin=1, vmax=5), use_container_width=True)
             
-            # BOTÃO DOWNLOAD RANKING
             excel_data_rank = convert_df_to_excel(df_rank)
             st.download_button(
                 label="📥 Baixar Ranking (.xlsx)",
@@ -642,11 +672,9 @@ if df_geral is not None and df_classificado is not None:
                 key="btn_down_rank"
             )
 
-            # Tabela Detalhada
             df_det_tec = df_tf[['Data da resposta local', 'Nome do Técnico', 'Avaliação do Técnico', 'Num OS', 'Franquia']].sort_values('Data da resposta local', ascending=False)
             st.dataframe(df_det_tec, use_container_width=True, hide_index=True)
             
-            # BOTÃO DOWNLOAD DETALHE TÉCNICO
             excel_data_det_tec = convert_df_to_excel(df_det_tec)
             st.download_button(
                 label="📥 Baixar Extrato de Notas (.xlsx)",
@@ -670,7 +698,6 @@ if df_geral is not None and df_classificado is not None:
             else:
                 if not rg.empty:
                     st.dataframe(rg, use_container_width=True, hide_index=True)
-                    # BOTÃO DOWNLOAD
                     excel_data_rg = convert_df_to_excel(rg)
                     st.download_button(
                         label="📥 Baixar Dados Gerais (.xlsx)",
@@ -684,7 +711,6 @@ if df_geral is not None and df_classificado is not None:
                 if not rc.empty:
                     st.markdown(f"**Classificação:** `{rc.iloc[0].get('Categorização Primária','-')}` > `{rc.iloc[0].get('Subcategorização Primária','-')}`")
                     st.dataframe(rc, use_container_width=True, hide_index=True)
-                    # BOTÃO DOWNLOAD
                     excel_data_rc = convert_df_to_excel(rc)
                     st.download_button(
                         label="📥 Baixar Classificação (.xlsx)",
@@ -762,7 +788,7 @@ if df_geral is not None and df_classificado is not None:
                             txt_pareto += " -> Problema SISTÊMICO espalhado na equipe (Ação: Revisão de Processo Global)."
 
                 prompt_text = f"""
-Atue como Head de Customer Experience. Analise os dados do dashboard (Filtros: {anos_disponiveis if ano_selecionado == 'Todos' else ano_selecionado} - {meses_selecionados}).
+Atue como Head de Customer Experience. Analise os dados do dashboard (Filtros: {anos_disponiveis if ano_selecionado == 'Todos' else ano_selecionado} - {meses_selecionados} - Seg: {segmentos_selecionados}).
 
 1. CONTEXTO GERAL
 - Volume Total: {len(df_geral_filt)}
