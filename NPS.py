@@ -480,7 +480,6 @@ if df_geral is not None and df_classificado is not None:
                     fig.update_layout(margin=dict(t=40, b=20, l=120, r=120), title_text="Distribuição por Motivo", title_font=dict(size=14))
                     st.plotly_chart(fig, use_container_width=True)
                 
-                # MERGE PARA TRAZER FR, SEGMENTO, TECNICO E COMENTARIOS
                 if 'Num OS' in df_fin.columns and 'Num OS' in df_geral.columns:
                     cols_source = ['Num OS', 'Comentário NPS Ecohouse', 'Franquia', 'Nome do Técnico', 'Segmento']
                     cols_source = [c for c in cols_source if c in df_geral.columns]
@@ -583,7 +582,6 @@ if df_geral is not None and df_classificado is not None:
 
                 st.markdown("#### 📄 Extrato da Seleção")
                 
-                # MERGE PARA TRAZER FR, SEGMENTO, TECNICO E COMENTARIOS
                 if 'Num OS' in df_final_extrato.columns and 'Num OS' in df_geral.columns:
                     cols_extra = ['Num OS', 'Comentário NPS Ecohouse', 'Franquia', 'Nome do Técnico', 'Segmento']
                     cols_extra = [c for c in cols_extra if c in df_geral.columns]
@@ -655,7 +653,9 @@ if df_geral is not None and df_classificado is not None:
             st.plotly_chart(fig, use_container_width=True)
             
             st.markdown("---")
-            sel_t = st.selectbox("Técnico:", ['Todos'] + sorted(df_tc['Nome do Técnico'].unique()))
+            # --- CORREÇÃO AQUI: Tratamento do NaN/Float no sorted() ---
+            sel_t = st.selectbox("Técnico:", ['Todos'] + sorted(df_tc['Nome do Técnico'].dropna().astype(str).unique()))
+            
             df_tf = df_tc if sel_t == 'Todos' else df_tc[df_tc['Nome do Técnico'] == sel_t]
             
             ind = df_tf.groupby(['Nome do Técnico', 'Franquia']).agg(Media=('Avaliação do Técnico', 'mean'), Qtd=('Avaliação do Técnico', 'count')).reset_index()
