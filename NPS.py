@@ -48,17 +48,23 @@ html, body, .stApp, [class*="css"] {
 [data-testid="stAppViewContainer"] { background: var(--bg); }
 
 /* ---- Esconde header/menu/footer nativos ---- */
-header[data-testid="stHeader"] { background: transparent; height: 0; }
+header[data-testid="stHeader"] { display: none !important; }
+[data-testid="stDecoration"] { display: none !important; }
 #MainMenu, footer { visibility: hidden; }
-[data-testid="stToolbar"] { right: 12px; }
+[data-testid="stToolbar"] { display: none !important; }
+[data-testid="stAppViewContainer"] > .main .block-container,
+[data-testid="stMainBlockContainer"] { padding-top: 2rem; }
 
-/* ---- Títulos ---- */
+/* ---- Títulos (menores e sem negrito) ---- */
+h1 { font-size: 1.5rem !important; }
+h2 { font-size: 1.25rem !important; }
+h3 { font-size: 1.05rem !important; }
 h1, h2, h3 {
     color: var(--navy) !important;
-    font-weight: 800 !important;
+    font-weight: 500 !important;
     letter-spacing: -0.01em !important;
 }
-h4, h5, h6 { color: var(--ink) !important; font-weight: 700 !important; }
+h4, h5, h6 { color: var(--ink) !important; font-weight: 500 !important; }
 
 /* ---- Sidebar ---- */
 [data-testid="stSidebar"] {
@@ -77,34 +83,34 @@ h4, h5, h6 { color: var(--ink) !important; font-weight: 700 !important; }
     position: relative;
     background: var(--card);
     border: 1px solid var(--line);
-    border-radius: 12px;
-    padding: 14px 8px;
-    min-height: 92px;
+    border-radius: 10px;
+    padding: 10px 6px;
+    min-height: 74px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     text-align: center;
     overflow: hidden;
-    box-shadow: 0 1px 2px rgba(16,40,90,.04), 0 8px 20px rgba(16,40,90,.05);
+    box-shadow: 0 1px 2px rgba(16,40,90,.04), 0 6px 16px rgba(16,40,90,.05);
     transition: transform .18s ease, box-shadow .18s ease;
 }
 .kpi-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 4px 8px rgba(16,40,90,.08), 0 16px 32px rgba(16,40,90,.10);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(16,40,90,.08), 0 12px 24px rgba(16,40,90,.10);
 }
 .kpi-topbar {
     position: absolute; top: 0; left: 0; right: 0; height: 3px;
     background: linear-gradient(90deg, var(--navy), var(--blue2));
 }
 .kpi-title {
-    font-size: 10px; font-weight: 600; color: var(--muted);
-    text-transform: uppercase; letter-spacing: .3px; margin: 0;
-    line-height: 1.2; word-break: break-word;
+    font-size: 8.5px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .2px; margin: 0;
+    line-height: 1.25; overflow-wrap: normal; word-break: normal;
 }
 .kpi-value {
-    font-size: 22px; font-weight: 800; color: var(--navy);
-    margin: 6px 0 0 0; line-height: 1.1;
+    font-size: 17px; font-weight: 700; color: var(--navy);
+    margin: 4px 0 0 0; line-height: 1.1;
 }
 
 /* ---- Card de destaque (dark / hero) ---- */
@@ -196,6 +202,14 @@ pio.templates["nps_premium"] = go.layout.Template(
     )
 )
 pio.templates.default = "plotly+nps_premium"
+
+def fundo_transparente(fig):
+    """Força fundo transparente na figura (garante que o gráfico use a cor do app)."""
+    fig.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)'
+    )
+    return fig
 
 # --- PALETAS DE CORES ---
 CORES_NPS_PASTEL = {
@@ -636,7 +650,7 @@ if df_geral is not None and df_classificado is not None:
                     ticktext=text_x
                 )
             )
-            st.plotly_chart(fig, use_container_width=True, theme=None)
+            st.plotly_chart(fundo_transparente(fig), use_container_width=True, theme=None)
 
             col_a, col_b, col_c = st.columns(3)
             def criar_tabela_cat_simples(nome, icone, cor):
@@ -688,7 +702,7 @@ if df_geral is not None and df_classificado is not None:
             
             fig = px.imshow(piv_heat, labels=dict(x="Mês", y="Categoria", color="Qtd"), color_continuous_scale='Blues', text_auto=True, aspect="auto", title="Mapa de Calor: Categoria x Mês")
             fig.update_layout(title_font=dict(size=14))
-            st.plotly_chart(fig, use_container_width=True, theme=None)
+            st.plotly_chart(fundo_transparente(fig), use_container_width=True, theme=None)
             st.markdown("---")
             st.markdown("### 📋 Top 5 Ofensores")
             for cat in piv_heat.index:
@@ -751,7 +765,7 @@ if df_geral is not None and df_classificado is not None:
                         textposition='outside'
                     )])
                     fig.update_layout(margin=dict(t=40, b=20, l=120, r=120), title_text="Distribuição por Motivo", title_font=dict(size=14))
-                    st.plotly_chart(fig, use_container_width=True, theme=None)
+                    st.plotly_chart(fundo_transparente(fig), use_container_width=True, theme=None)
                 
                 if 'Num OS' in df_fin.columns and 'Num OS' in df_geral.columns:
                     cols_source = ['Num OS', 'Comentário NPS Ecohouse', 'Franquia', 'Nome do Técnico', 'Segmento']
@@ -828,7 +842,7 @@ if df_geral is not None and df_classificado is not None:
                         height=350,
                         title_font=dict(size=14)
                     )
-                    st.plotly_chart(fig, use_container_width=True, theme=None)
+                    st.plotly_chart(fundo_transparente(fig), use_container_width=True, theme=None)
 
             st.divider()
             st.subheader("🔎 Filtro de Detalhamento e Extrato")
@@ -923,7 +937,7 @@ if df_geral is not None and df_classificado is not None:
                     ticktext=text_x_tc
                 )
             )
-            st.plotly_chart(fig, use_container_width=True, theme=None)
+            st.plotly_chart(fundo_transparente(fig), use_container_width=True, theme=None)
             
             st.markdown("---")
             # --- CORREÇÃO AQUI: Tratamento do NaN/Float no sorted() ---
