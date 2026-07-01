@@ -111,7 +111,15 @@ def load_data_geral(file_path):
             df['Segmento'] = df['Forma Jurídica'].apply(map_segmento)
         else:
             df['Segmento'] = 'Não Informado'
-            
+
+        # --- NORMALIZAÇÃO DA PLATAFORMA (NOVO) ---
+        # Medallia = visão legado | Qualtrics = visão atual
+        if 'Plataforma' in df.columns:
+            df['Plataforma'] = df['Plataforma'].astype(str).str.strip()
+            df.loc[df['Plataforma'].isin(['nan', 'None', 'NaN', '']), 'Plataforma'] = 'Não Informado'
+        else:
+            df['Plataforma'] = 'Não Informado'
+
         return df
     except Exception as e:
         st.error(f"Erro ao ler {file_path}: {e}")
@@ -131,7 +139,14 @@ def load_data_classificado(file_path):
         
         if 'Num OS' in df.columns:
             df['Num OS'] = df['Num OS'].astype(str).str.replace('.0', '', regex=False)
-            
+
+        # --- NORMALIZAÇÃO DA PLATAFORMA (NOVO) ---
+        # Se o arquivo Classificado já trouxer a coluna, normaliza aqui.
+        # Caso contrário, ela será puxada do Geral via Num OS (mais abaixo).
+        if 'Plataforma' in df.columns:
+            df['Plataforma'] = df['Plataforma'].astype(str).str.strip()
+            df.loc[df['Plataforma'].isin(['nan', 'None', 'NaN', '']), 'Plataforma'] = 'Não Informado'
+
         if 'NPS Purificador BTP' in df.columns:
              df['NPS Purificador BTP'] = pd.to_numeric(df['NPS Purificador BTP'], errors='coerce')
              df['Classificacao'] = df['NPS Purificador BTP'].apply(classificar_nps)
@@ -236,16 +251,34 @@ df_classificado = load_data_classificado(ARQUIVO_CLASSIFICADO)
 
 if df_geral is not None and df_classificado is not None:
     
-    # GARANTIR QUE SEGMENTO ESTEJA NO CLASSIFICADO PARA OS FILTROS
+    # GARANTIR QUE SEGMENTO E PLATAFORMA ESTEJAM NO CLASSIFICADO PARA OS FILTROS
     if 'Num OS' in df_geral.columns and 'Num OS' in df_classificado.columns:
         if 'Segmento' in df_geral.columns and 'Segmento' not in df_classificado.columns:
             temp_seg = df_geral[['Num OS', 'Segmento']].drop_duplicates('Num OS')
             df_classificado = df_classificado.merge(temp_seg, on='Num OS', how='left')
             df_classificado['Segmento'] = df_classificado['Segmento'].fillna('Não Informado')
 
+        # NOVO: puxa a Plataforma (Medallia/Qualtrics) do Geral p/ o Classificado
+        if 'Plataforma' in df_geral.columns and 'Plataforma' not in df_classificado.columns:
+            temp_plat = df_geral[['Num OS', 'Plataforma']].drop_duplicates('Num OS')
+            df_classificado = df_classificado.merge(temp_plat, on='Num OS', how='left')
+            df_classificado['Plataforma'] = df_classificado['Plataforma'].fillna('Não Informado')
+
     # --- FILTROS GLOBAIS ---
     st.sidebar.header("Filtros Globais")
-    
+
+    # NOVO FILTRO GLOBAL: Plataforma (Medallia Legado x Qualtrics Atual)
+    plataformas_disp = sorted([str(p) for p in df_geral['Plataforma'].dropna().unique()])
+    plataformas_selecionadas = st.sidebar.multiselect(
+        "🛰️ Plataforma (Sistema):",
+        options=['Todas'] + plataformas_disp,
+        default=['Todas'],
+        help="Medallia = visão legado | Qualtrics = visão atual. "
+             "Selecione ambas (ou 'Todas') para a visão consolidada, "
+             "ou uma delas para isolar cada sistema."
+    )
+    st.sidebar.markdown("---")
+
     anos_disponiveis = sorted(df_geral['Ano'].dropna().unique().astype(int))
     opcoes_anos = ['Todos'] + [str(a) for a in anos_disponiveis]
     ano_selecionado = st.sidebar.selectbox("Selecione o Ano:", opcoes_anos)
@@ -280,6 +313,12 @@ if df_geral is not None and df_classificado is not None:
     # --- APLICAÇÃO DOS FILTROS ---
     df_geral_filt = df_geral.copy()
     df_class_filt = df_classificado.copy()
+
+    # FILTRO GLOBAL DE PLATAFORMA (aplica no Geral E no Classificado)
+    if "Todas" not in plataformas_selecionadas:
+        df_geral_filt = df_geral_filt[df_geral_filt['Plataforma'].isin(plataformas_selecionadas)]
+        if 'Plataforma' in df_class_filt.columns:
+            df_class_filt = df_class_filt[df_class_filt['Plataforma'].isin(plataformas_selecionadas)]
 
     if ano_selecionado != 'Todos':
         df_geral_filt = df_geral_filt[df_geral_filt['Ano'] == int(ano_selecionado)]
@@ -788,7 +827,7 @@ if df_geral is not None and df_classificado is not None:
                             txt_pareto += " -> Problema SISTÊMICO espalhado na equipe (Ação: Revisão de Processo Global)."
 
                 prompt_text = f"""
-Atue como Head de Customer Experience. Analise os dados do dashboard (Filtros: {anos_disponiveis if ano_selecionado == 'Todos' else ano_selecionado} - {meses_selecionados} - Seg: {segmentos_selecionados}).
+Atue como Head de Customer Experience. Analise os dados do dashboard (Filtros: {anos_disponiveis if ano_selecionado == 'Todos' else ano_selecionado} - {meses_selecionados} - Seg: {segmentos_selecionados} - Plataforma: {plataformas_selecionadas}).
 
 1. CONTEXTO GERAL
 - Volume Total: {len(df_geral_filt)}
