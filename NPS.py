@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.io as pio
 import os
 from io import BytesIO 
 
@@ -178,6 +179,23 @@ hr { border-color: var(--line); }
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
+# ==========================================================================
+# TEMA GLOBAL DOS GRÁFICOS (Plotly) - fundo transparente + fonte Inter
+# Aplica-se automaticamente a TODOS os gráficos (px e go).
+# ==========================================================================
+pio.templates["nps_premium"] = go.layout.Template(
+    layout=dict(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(family='Inter, -apple-system, sans-serif', color='#16233F', size=12),
+        title=dict(font=dict(family='Inter, sans-serif', color='#0A2A66')),
+        xaxis=dict(gridcolor='#E4EBF6', zerolinecolor='#E4EBF6', linecolor='#E4EBF6'),
+        yaxis=dict(gridcolor='#E4EBF6', zerolinecolor='#E4EBF6', linecolor='#E4EBF6'),
+        legend=dict(bgcolor='rgba(0,0,0,0)'),
+    )
+)
+pio.templates.default = "plotly+nps_premium"
+
 # --- PALETAS DE CORES ---
 CORES_NPS_PASTEL = {
     'Promotor': '#a8e6cf', 
@@ -214,17 +232,21 @@ def classificar_nps(nota):
     else: return "Detrator"
 
 def normalizar_programa(val):
-    """Unifica os nomes de programa entre Medallia (legado) e Qualtrics (atual).
-    Qualtrics usa 'Maintenance' e 'Reparo' (ambos = pós-venda/serviço) e 'Instalação'.
-    Medallia usa 'Pós OS' e 'Instalação'.
-    Resultado: dois baldes -> 'Pós OS' e 'Instalação' (mantém o dashboard coerente)."""
+    """Padroniza a grafia dos programas SEM juntar categorias distintas.
+    Qualtrics: 'Maintenance', 'Reparo', 'Instalação' (mantidos separados).
+    Medallia (legado): 'Pós OS', 'Instalação'.
+    Apenas uniformiza variações de grafia (acentos/caixa) de cada valor."""
     if pd.isna(val): return val
     v = str(val).strip()
     v_low = v.lower()
     if 'instala' in v_low:
         return 'Instalação'
-    if v_low in ('maintenance', 'reparo', 'manutenção', 'manutencao', 'pós os', 'pos os', 'pós-os'):
+    if v_low in ('pós os', 'pos os', 'pós-os', 'pos-os'):
         return 'Pós OS'
+    if v_low == 'maintenance':
+        return 'Maintenance'
+    if v_low in ('reparo', 'repair'):
+        return 'Reparo'
     return v
 
 def calcular_nps_score(df_input):
@@ -351,11 +373,24 @@ def load_data_classificado(file_path):
 
 def filtrar_por_programa(df, coluna_programa, selecao):
     if selecao == "Geral": return df
-    elif selecao == "Pós OS":
-        if coluna_programa in df.columns: return df[df[coluna_programa] == "Pós OS"]
-    else: 
-        if coluna_programa in df.columns: return df[df[coluna_programa].str.contains("Instala", na=False, case=False)]
-    return pd.DataFrame()
+    if coluna_programa not in df.columns: return pd.DataFrame()
+    # Instalação usa 'contains' por segurança (variações de grafia)
+    if selecao == "Instalação":
+        return df[df[coluna_programa].astype(str).str.contains("Instala", na=False, case=False)]
+    # Demais programas: correspondência exata (Pós OS, Maintenance, Reparo, etc.)
+    return df[df[coluna_programa] == selecao]
+
+# Ordem de preferência para exibir os programas
+ORDEM_PROGRAMAS = ['Pós OS', 'Maintenance', 'Reparo', 'Instalação']
+
+def listar_programas(df):
+    """Retorna os programas presentes no df, ordenados pela preferência."""
+    if 'Programa de Pesquisa' not in df.columns:
+        return []
+    presentes = [p for p in df['Programa de Pesquisa'].dropna().unique()]
+    ordenados = [p for p in ORDEM_PROGRAMAS if p in presentes]
+    ordenados += [p for p in sorted(presentes) if p not in ORDEM_PROGRAMAS]
+    return ordenados
 
 # --- KPI CARD (Premium) ---
 # cor_bg é mantido por compatibilidade com as chamadas antigas (ignorado no visual).
@@ -364,13 +399,13 @@ def filtrar_por_programa(df, coluna_programa, selecao):
 def criar_card_kpi(titulo, valor, cor_bg=None, destaque=False, top_bar=False):
     classe = "kpi-card kpi-dark" if destaque else "kpi-card"
     barra = '<div class="kpi-topbar"></div>' if (top_bar and not destaque) else ''
-    html_card = f"""
-    <div class="{classe}">
-        {barra}
-        <p class="kpi-title">{titulo}</p>
-        <p class="kpi-value">{valor}</p>
-    </div>
-    """
+    # HTML em uma única linha e SEM indentação, para o Streamlit não
+    # interpretar como bloco de código (senão as tags aparecem cruas).
+    html_card = (
+        f'<div class="{classe}">{barra}'
+        f'<p class="kpi-title">{titulo}</p>'
+        f'<p class="kpi-value">{valor}</p></div>'
+    )
     return st.markdown(html_card, unsafe_allow_html=True)
 
 # --- FUNÇÃO DE AJUDA PARA TEXTO ---
@@ -414,9 +449,11 @@ def gerar_texto_franquias(df_target):
 # --- Interface Principal ---
 # Logo da empresa (antes do título). Coloque um arquivo 'logo.png' na mesma pasta.
 if os.path.exists("logo.png"):
-    st.sidebar.image("logo.png", use_container_width=True)
+    _lc1, _lc2, _lc3 = st.sidebar.columns([1, 2, 1])
+    with _lc2:
+        st.image("logo.png", use_container_width=True)
 
-st.sidebar.title("📊 Dashboard de Indicadores NPS")
+st.sidebar.title("NPS")
 
 # --- DATA DE ATUALIZAÇÃO ---
 data_atualizacao = ler_data_atualizacao()
@@ -514,23 +551,38 @@ if df_geral is not None and df_classificado is not None:
         if 'Franquia' in df_class_filt.columns: df_class_filt = df_class_filt[df_class_filt['Franquia'].isin(franquias_selecionadas)]
 
     # --- KPIS ---
-    df_pos_global = df_geral_filt[df_geral_filt['Programa de Pesquisa'] == 'Pós OS']
-    df_inst_global = df_geral_filt[df_geral_filt['Programa de Pesquisa'].str.contains("Instala", na=False, case=False)]
-
     st.markdown("### Indicadores de Performance NPS")
-    k1, k2, k3, k4, k5, k6, k7 = st.columns(7)
-    
-    with k1: criar_card_kpi("NPS", f"{calcular_nps_score(df_geral_filt):.1f}".replace('.', ','), destaque=True)
-    with k2: criar_card_kpi("Respostas", fmt_milhar(len(df_geral_filt)))
-    with k3: criar_card_kpi("NPS Pós OS", f"{calcular_nps_score(df_pos_global):.1f}".replace('.', ','), top_bar=True)
-    with k4: criar_card_kpi("Resp. Pós OS", fmt_milhar(len(df_pos_global)))
-    with k5: criar_card_kpi("NPS Instalação", f"{calcular_nps_score(df_inst_global):.1f}".replace('.', ','), top_bar=True)
-    with k6: criar_card_kpi("Resp. Instalação", fmt_milhar(len(df_inst_global)))
-    val_5s = df_geral_filt['Avaliação do Técnico'].mean()
-    with k7: criar_card_kpi("5Star", f"{val_5s:.2f}".replace('.', ',') if pd.notnull(val_5s) else "-", top_bar=True)
+
+    programas_presentes = listar_programas(df_geral_filt)
+    val_5s = df_geral_filt['Avaliação do Técnico'].mean() if 'Avaliação do Técnico' in df_geral_filt.columns else None
+
+    # Monta a lista de KPIs dinamicamente:
+    # NPS geral (hero) + Respostas + (NPS/Resp por programa) + 5Star
+    kpi_specs = [
+        {"t": "NPS", "v": f"{calcular_nps_score(df_geral_filt):.1f}".replace('.', ','), "dark": True},
+        {"t": "Respostas", "v": fmt_milhar(len(df_geral_filt))},
+    ]
+    for prog in programas_presentes:
+        df_prog = filtrar_por_programa(df_geral_filt, 'Programa de Pesquisa', prog)
+        kpi_specs.append({"t": f"NPS {prog}", "v": f"{calcular_nps_score(df_prog):.1f}".replace('.', ','), "top": True})
+        kpi_specs.append({"t": f"Resp. {prog}", "v": fmt_milhar(len(df_prog))})
+    kpi_specs.append({"t": "5Star", "v": f"{val_5s:.2f}".replace('.', ',') if pd.notnull(val_5s) else "-", "top": True})
+
+    # Renderiza em linhas de no máximo 7 cards
+    POR_LINHA = 7
+    for i in range(0, len(kpi_specs), POR_LINHA):
+        bloco = kpi_specs[i:i + POR_LINHA]
+        cols = st.columns(len(bloco))
+        for col, spec in zip(cols, bloco):
+            with col:
+                criar_card_kpi(spec["t"], spec["v"], destaque=spec.get("dark", False), top_bar=spec.get("top", False))
     st.markdown("---")
 
     # --- ABAS ---
+    # Opções ESTÁVEIS de programa (baseadas em toda a base, não no filtro atual)
+    # para evitar erro de session_state quando o filtro de plataforma muda.
+    prog_radio_opcoes = ["Geral"] + listar_programas(df_geral)
+
     tabs = st.tabs(["Visão Geral", "Análise Consolidada", "NPS Franquias Detratores e Neutros", "Classificação NPS", "5Star", "Detalhes", "🧠 Análises Avançadas"])
     (tab_visao, tab_consolidada, tab_franquia, tab_kpis, tab_tecnico, tab_detalhes, tab_analises) = tabs
 
@@ -607,10 +659,11 @@ if df_geral is not None and df_classificado is not None:
             st.markdown("---")
 
         gerar_analise_nps_visual(df_geral_filt, "")
-        
+
         if 'Programa de Pesquisa' in df_geral_filt.columns:
-            gerar_analise_nps_visual(df_geral_filt[df_geral_filt['Programa de Pesquisa'] == 'Pós OS'], "Pós OS")
-            gerar_analise_nps_visual(df_geral_filt[df_geral_filt['Programa de Pesquisa'].str.contains("Instala", na=False, case=False)], "Instalação")
+            for prog in listar_programas(df_geral_filt):
+                df_prog = filtrar_por_programa(df_geral_filt, 'Programa de Pesquisa', prog)
+                gerar_analise_nps_visual(df_prog, prog)
 
     # 2. Análise Consolidada
     with tab_consolidada:
@@ -619,7 +672,7 @@ if df_geral is not None and df_classificado is not None:
         **Como ler o Mapa de Calor:** Este gráfico exibe a **concentração de casos** por categoria e mês.  
         As cores mais escuras (azul forte) indicam **maior volume de ocorrências**, facilitando a identificação imediata dos principais ofensores e padrões de sazonalidade.
         """)
-        tipo_pes = st.radio("Programa:", ["Geral", "Pós OS", "Instalação"], horizontal=True, key="rd_cons")
+        tipo_pes = st.radio("Programa:", prog_radio_opcoes, horizontal=True, key="rd_cons")
         df_cons = filtrar_por_programa(df_class_filt, 'Programa de Pesquisa', tipo_pes)
         if not df_cons.empty and 'Categorização Primária' in df_cons.columns:
             meses_p = sorted(df_cons['Mes_Num'].unique())
@@ -656,7 +709,7 @@ if df_geral is not None and df_classificado is not None:
     # 3. Franquias
     with tab_franquia:
         st.subheader("Análise Detalhada por Franquia")
-        tp_frq = st.radio("Programa:", ["Geral", "Pós OS", "Instalação"], horizontal=True, key="rd_frq")
+        tp_frq = st.radio("Programa:", prog_radio_opcoes, horizontal=True, key="rd_frq")
         df_fr = filtrar_por_programa(df_class_filt, 'Programa de Pesquisa', tp_frq)
         if not df_fr.empty and 'Franquia' in df_fr.columns:
             frqs = sorted(df_fr['Franquia'].dropna().unique())
@@ -729,7 +782,7 @@ if df_geral is not None and df_classificado is not None:
     # 4. Classificação NPS
     with tab_kpis:
         st.subheader("Classificação NPS")
-        tp_kp = st.radio("Visão:", ["Geral", "Pós OS", "Instalação"], horizontal=True, key="rd_kp")
+        tp_kp = st.radio("Visão:", prog_radio_opcoes, horizontal=True, key="rd_kp")
         df_kp = filtrar_por_programa(df_class_filt, 'Programa de Pesquisa', tp_kp)
         
         if not df_kp.empty:
@@ -832,7 +885,7 @@ if df_geral is not None and df_classificado is not None:
         st.subheader("⭐ Programa 5Star")
         cr, cf, cm = st.columns([1.2, 1, 1]) 
         
-        tp_tec = cr.radio("Programa:", ["Geral", "Pós OS", "Instalação"], horizontal=True, key="rd_tec")
+        tp_tec = cr.radio("Programa:", prog_radio_opcoes, horizontal=True, key="rd_tec")
         ops = ['Todas'] + sorted(df_geral_filt['Franquia'].unique())
         sel_loc = cf.multiselect("Franquias:", ops, default=['Todas'])
         
@@ -959,11 +1012,19 @@ if df_geral is not None and df_classificado is not None:
                          if 'Classificacao_y' in df_class_filt.columns:
                              df_class_filt['Classificacao'] = df_class_filt['Classificacao'].fillna(df_class_filt['Classificacao_y'])
 
-                df_pos = df_geral_filt[df_geral_filt['Programa de Pesquisa'] == 'Pós OS']
-                df_inst = df_geral_filt[df_geral_filt['Programa de Pesquisa'].str.contains("Instala", na=False, case=False)]
-                
-                df_class_pos = filtrar_por_programa(df_class_filt, 'Programa de Pesquisa', "Pós OS")
-                df_class_inst = filtrar_por_programa(df_class_filt, 'Programa de Pesquisa', "Instalação")
+                # Detalhamento dinâmico por programa (não junta Maintenance/Reparo)
+                txt_programas = ""
+                marcadores = ['🅰️', '🅱️', '🅲️', '🅳️', '🅴️']
+                for idx, prog in enumerate(listar_programas(df_geral_filt)):
+                    marc = marcadores[idx] if idx < len(marcadores) else '▶️'
+                    df_prog = filtrar_por_programa(df_geral_filt, 'Programa de Pesquisa', prog)
+                    df_class_prog = filtrar_por_programa(df_class_filt, 'Programa de Pesquisa', prog)
+                    txt_programas += f"{marc} {prog.upper()}\n"
+                    txt_programas += f"- NPS: {calcular_nps_score(df_prog):.1f} (Vol: {len(df_prog)})\n"
+                    txt_programas += "- Principais Ofensores (Categorias > Subcategorias):\n"
+                    txt_programas += f"{gerar_texto_ofensores(df_class_prog)}\n"
+                    txt_programas += "- Performance de Franquias:\n"
+                    txt_programas += f"{gerar_texto_franquias(df_prog)}\n\n"
 
                 txt_comentarios = "Sem comentários disponíveis."
                 if 'Comentário NPS Ecohouse' in df_geral_filt.columns:
@@ -1017,20 +1078,7 @@ Atue como Head de Customer Experience. Analise os dados do dashboard (Filtros: {
 {txt_pareto}
 
 4. DETALHAMENTO POR PROGRAMA
-🅰️ PÓS OS (Reparo/Manutenção)
-- NPS: {calcular_nps_score(df_pos):.1f} (Vol: {len(df_pos)})
-- Principais Ofensores (Categorias > Subcategorias):
-{gerar_texto_ofensores(df_class_pos)}
-- Performance de Franquias (Pós OS):
-{gerar_texto_franquias(df_pos)}
-
-🅱️ INSTALAÇÃO (Novos Clientes)
-- NPS: {calcular_nps_score(df_inst):.1f} (Vol: {len(df_inst)})
-- Principais Ofensores:
-{gerar_texto_ofensores(df_class_inst)}
-- Performance de Franquias (Instalação):
-{gerar_texto_franquias(df_inst)}
-
+{txt_programas}
 5. PROGRAMA TÉCNICO (5STAR)
 - Nota Média Geral: {df_geral_filt['Avaliação do Técnico'].mean():.2f}/5.0
 - Técnicos em Alerta (Nota < 4.5 e Vol > 3): 
@@ -1078,7 +1126,15 @@ Crie um relatório estratégico contendo:
 
                     delta_nps = nps_b - nps_a
                     delta_vol = vol_b - vol_a
-                    
+
+                    # Detalhe por programa dinâmico (união dos programas de A e B)
+                    progs_comp = listar_programas(pd.concat([df_a_geral, df_b_geral], ignore_index=True))
+                    txt_prog_comp = ""
+                    for prog in progs_comp:
+                        a_p = filtrar_por_programa(df_a_geral, 'Programa de Pesquisa', prog)
+                        b_p = filtrar_por_programa(df_b_geral, 'Programa de Pesquisa', prog)
+                        txt_prog_comp += f"- {prog}: {calcular_nps_score(a_p):.1f} -> {calcular_nps_score(b_p):.1f}\n"
+
                     prompt_comp = f"""
 Atue como Head de Estratégia CX. Realize uma análise comparativa (Year-over-Year ou Month-over-Month) entre dois períodos.
 
@@ -1097,12 +1153,10 @@ PERÍODO A ({per_a})  vs  PERÍODO B ({per_b})
 {gerar_texto_ofensores(df_b_class)}
 
 3. DETALHE POR PROGRAMA (NPS A -> NPS B)
-- Pós OS: {calcular_nps_score(df_a_geral[df_a_geral['Programa de Pesquisa']=='Pós OS']):.1f} -> {calcular_nps_score(df_b_geral[df_b_geral['Programa de Pesquisa']=='Pós OS']):.1f}
-- Instalação: {calcular_nps_score(df_a_geral[df_a_geral['Programa de Pesquisa'].str.contains("Instala",na=False)]):.1f} -> {calcular_nps_score(df_b_geral[df_b_geral['Programa de Pesquisa'].str.contains("Instala",na=False)]):.1f}
-
+{txt_prog_comp}
 ---
 TAREFA ANALÍTICA:
-1. **Veredito da Evolução:** O NPS subiu ou caiu? Foi impulsionado por Pós OS ou Instalação?
+1. **Veredito da Evolução:** O NPS subiu ou caiu? Quais programas puxaram o resultado?
 2. **Análise de Causa Raiz:** O principal ofensor do Período A foi resolvido no B? Surgiu um novo ofensor crítico?
 3. **Recomendação Tática:** O que a diretoria deve fazer para manter a tendência de alta ou reverter a queda no próximo ciclo?
 """
