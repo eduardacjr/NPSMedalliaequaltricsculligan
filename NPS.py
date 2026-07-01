@@ -106,7 +106,7 @@ h4, h5, h6 { color: var(--ink) !important; font-weight: 700 !important; }
     background: linear-gradient(90deg, var(--navy), var(--blue2));
 }
 .kpi-title {
-    font-size: 9px; font-weight: 700; color: var(--muted);
+    font-size: 8px; font-weight: 700; color: var(--muted);
     letter-spacing: 0; margin: 0;
     line-height: 1.2; overflow-wrap: normal; word-break: normal;
 }
