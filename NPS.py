@@ -55,16 +55,16 @@ header[data-testid="stHeader"] { display: none !important; }
 [data-testid="stAppViewContainer"] > .main .block-container,
 [data-testid="stMainBlockContainer"] { padding-top: 2rem; }
 
-/* ---- Títulos (menores e sem negrito) ---- */
+/* ---- Títulos (menores e em negrito) ---- */
 h1 { font-size: 1.5rem !important; }
 h2 { font-size: 1.25rem !important; }
 h3 { font-size: 1.05rem !important; }
 h1, h2, h3 {
     color: var(--navy) !important;
-    font-weight: 500 !important;
+    font-weight: 800 !important;
     letter-spacing: -0.01em !important;
 }
-h4, h5, h6 { color: var(--ink) !important; font-weight: 500 !important; }
+h4, h5, h6 { color: var(--ink) !important; font-weight: 700 !important; }
 
 /* ---- Sidebar ---- */
 [data-testid="stSidebar"] {
@@ -84,8 +84,10 @@ h4, h5, h6 { color: var(--ink) !important; font-weight: 500 !important; }
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: 10px;
-    padding: 10px 6px;
-    min-height: 74px;
+    padding: 8px 6px;
+    height: 82px;
+    width: 100%;
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -104,13 +106,13 @@ h4, h5, h6 { color: var(--ink) !important; font-weight: 500 !important; }
     background: linear-gradient(90deg, var(--navy), var(--blue2));
 }
 .kpi-title {
-    font-size: 8.5px; font-weight: 600; color: var(--muted);
-    text-transform: uppercase; letter-spacing: .2px; margin: 0;
-    line-height: 1.25; overflow-wrap: normal; word-break: normal;
+    font-size: 9px; font-weight: 700; color: var(--muted);
+    letter-spacing: 0; margin: 0;
+    line-height: 1.2; overflow-wrap: normal; word-break: normal;
 }
 .kpi-value {
-    font-size: 17px; font-weight: 700; color: var(--navy);
-    margin: 4px 0 0 0; line-height: 1.1;
+    font-size: 16px; font-weight: 800; color: var(--navy);
+    margin: 3px 0 0 0; line-height: 1.1;
 }
 
 /* ---- Card de destaque (dark / hero) ---- */
@@ -500,8 +502,6 @@ if df_geral is not None and df_classificado is not None:
             df_classificado['Plataforma'] = df_classificado['Plataforma'].fillna('Não Informado')
 
     # --- FILTROS GLOBAIS ---
-    st.sidebar.header("Filtros Globais")
-
     # NOVO FILTRO GLOBAL: Plataforma (Medallia Legado x Qualtrics Atual)
     plataformas_disp = sorted([str(p) for p in df_geral['Plataforma'].dropna().unique()])
     plataformas_selecionadas = st.sidebar.multiselect(
@@ -512,7 +512,6 @@ if df_geral is not None and df_classificado is not None:
              "Selecione ambas (ou 'Todas') para a visão consolidada, "
              "ou uma delas para isolar cada sistema."
     )
-    st.sidebar.markdown("---")
 
     anos_disponiveis = sorted(df_geral['Ano'].dropna().unique().astype(int))
     opcoes_anos = ['Todos'] + [str(a) for a in anos_disponiveis]
@@ -523,14 +522,11 @@ if df_geral is not None and df_classificado is not None:
     meses_selecionados = st.sidebar.multiselect("Selecione o(s) Mês(es):", options=opcoes_meses, default=['Todos'])
 
     # NOVO FILTRO: Segmento
-    st.sidebar.markdown("---")
     if 'Segmento' in df_geral.columns:
         segmentos_disp = sorted([str(s) for s in df_geral['Segmento'].dropna().unique()])
         segmentos_selecionados = st.sidebar.multiselect("Selecione o Segmento:", options=['Todos'] + segmentos_disp, default=['Todos'])
     else:
         segmentos_selecionados = ['Todos']
-
-    st.sidebar.markdown("---")
 
     # FILTRO: Franquias
     franquias_geral = set(df_geral['Franquia'].dropna().unique())
@@ -543,7 +539,6 @@ if df_geral is not None and df_classificado is not None:
         st.sidebar.info(f"Todas as {len(todas_franquias)} franquias selecionadas.")
     else:
         franquias_selecionadas = st.sidebar.multiselect("Selecione as Franquias:", options=todas_franquias, default=[])
-    st.sidebar.markdown("---")
 
     # --- APLICAÇÃO DOS FILTROS ---
     df_geral_filt = df_geral.copy()
