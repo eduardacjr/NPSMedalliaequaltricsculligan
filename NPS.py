@@ -12,6 +12,172 @@ st.set_page_config(
     layout="wide"
 )
 
+# ==========================================================================
+# TEMA VISUAL CORPORATIVO PREMIUM (CSS)
+# ==========================================================================
+CUSTOM_CSS = """
+<style>
+/* ---- Fonte Inter ---- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* ---- Paleta corporativa ---- */
+:root {
+    --navy:      #0A2A66;
+    --blue:      #1E5FCC;
+    --blue2:     #3B82F6;
+    --blue-soft: #EAF1FB;
+    --ink:       #16233F;
+    --muted:     #647393;
+    --line:      #E4EBF6;
+    --bg:        #F4F7FD;
+    --card:      #FFFFFF;
+    --pos:       #0E9F6E;
+    --neg:       #E02424;
+}
+
+/* ---- Escala raiz e fonte global ---- */
+html { font-size: 13px; }
+html, body, .stApp, [class*="css"] {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: var(--ink);
+}
+
+/* ---- Fundo geral do app ---- */
+.stApp,
+[data-testid="stAppViewContainer"] { background: var(--bg); }
+
+/* ---- Esconde header/menu/footer nativos ---- */
+header[data-testid="stHeader"] { background: transparent; height: 0; }
+#MainMenu, footer { visibility: hidden; }
+[data-testid="stToolbar"] { right: 12px; }
+
+/* ---- Títulos ---- */
+h1, h2, h3 {
+    color: var(--navy) !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.01em !important;
+}
+h4, h5, h6 { color: var(--ink) !important; font-weight: 700 !important; }
+
+/* ---- Sidebar ---- */
+[data-testid="stSidebar"] {
+    background: var(--card);
+    border-right: 1px solid var(--line);
+}
+[data-testid="stSidebar"] * { color: var(--ink); }
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 { color: var(--navy) !important; }
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] .stMarkdown p { color: var(--muted); }
+
+/* ---- KPI Cards (premium) ---- */
+.kpi-card {
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px 10px;
+    min-height: 96px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(16,40,90,.04), 0 8px 20px rgba(16,40,90,.05);
+    transition: transform .18s ease, box-shadow .18s ease;
+}
+.kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(16,40,90,.08), 0 16px 32px rgba(16,40,90,.10);
+}
+.kpi-topbar {
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--navy), var(--blue2));
+}
+.kpi-title {
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .5px; margin: 0;
+}
+.kpi-value {
+    font-size: 26px; font-weight: 800; color: var(--navy);
+    margin: 6px 0 0 0; line-height: 1.1;
+}
+
+/* ---- Card de destaque (dark / hero) ---- */
+.kpi-dark {
+    background: linear-gradient(180deg, #0A2A66 0%, #163D8C 100%);
+    border: 1px solid #0A2A66;
+    box-shadow: 0 2px 6px rgba(10,42,102,.20), 0 14px 30px rgba(10,42,102,.25);
+}
+.kpi-dark .kpi-title { color: #B9CCEF; }
+.kpi-dark .kpi-value { color: #FFFFFF; }
+.kpi-dark:hover {
+    box-shadow: 0 6px 12px rgba(10,42,102,.28), 0 20px 40px rgba(10,42,102,.32);
+}
+
+/* ---- Botões (primário e download) ---- */
+.stButton > button, .stDownloadButton > button {
+    background: var(--navy); color: #FFFFFF; border: none;
+    border-radius: 9px; font-weight: 600; padding: 8px 18px;
+    transition: background .15s ease, transform .15s ease;
+}
+.stButton > button:hover, .stDownloadButton > button:hover {
+    background: var(--blue); color: #FFFFFF; transform: translateY(-1px);
+}
+.stButton > button:focus, .stDownloadButton > button:focus { color: #FFFFFF; }
+
+/* ---- Tabs ---- */
+[data-testid="stTabs"] [data-baseweb="tab-list"] {
+    gap: 4px; border-bottom: 1px solid var(--line);
+}
+[data-testid="stTabs"] button[data-baseweb="tab"] {
+    background: var(--blue-soft);
+    border-radius: 8px 8px 0 0;
+    padding: 8px 16px;
+    color: var(--muted);
+    border-bottom: 3px solid transparent;
+    font-weight: 600;
+}
+[data-testid="stTabs"] button[aria-selected="true"] {
+    background: #FFFFFF;
+    color: var(--navy) !important;
+    border-bottom: 3px solid var(--blue);
+}
+
+/* ---- DataFrames / Tabelas ---- */
+[data-testid="stDataFrame"], [data-testid="stTable"] {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(16,40,90,.04), 0 6px 16px rgba(16,40,90,.04);
+    overflow: hidden;
+}
+
+/* ---- Métricas nativas (caso existam) ---- */
+[data-testid="stMetric"] {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+    box-shadow: 0 1px 2px rgba(16,40,90,.04), 0 6px 16px rgba(16,40,90,.05);
+}
+
+/* ---- Inputs / selects ---- */
+[data-baseweb="select"] > div, .stTextInput input, .stNumberInput input {
+    border-radius: 8px !important;
+    border-color: var(--line) !important;
+}
+
+/* ---- Divisores ---- */
+hr { border-color: var(--line); }
+
+/* ---- Logo da sidebar ---- */
+.sidebar-logo { padding: 4px 0 10px 0; text-align: center; }
+</style>
+"""
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
 # --- PALETAS DE CORES ---
 CORES_NPS_PASTEL = {
     'Promotor': '#a8e6cf', 
@@ -46,6 +212,20 @@ def classificar_nps(nota):
     if nota >= 9: return "Promotor"
     elif nota >= 7: return "Neutro"
     else: return "Detrator"
+
+def normalizar_programa(val):
+    """Unifica os nomes de programa entre Medallia (legado) e Qualtrics (atual).
+    Qualtrics usa 'Maintenance' e 'Reparo' (ambos = pós-venda/serviço) e 'Instalação'.
+    Medallia usa 'Pós OS' e 'Instalação'.
+    Resultado: dois baldes -> 'Pós OS' e 'Instalação' (mantém o dashboard coerente)."""
+    if pd.isna(val): return val
+    v = str(val).strip()
+    v_low = v.lower()
+    if 'instala' in v_low:
+        return 'Instalação'
+    if v_low in ('maintenance', 'reparo', 'manutenção', 'manutencao', 'pós os', 'pos os', 'pós-os'):
+        return 'Pós OS'
+    return v
 
 def calcular_nps_score(df_input):
     if df_input.empty: return 0
@@ -98,7 +278,13 @@ def load_data_geral(file_path):
         
         df['Mes_Num'] = df['Data da resposta local'].dt.month
         df['Mes_Nome'] = df['Mes_Num'].map(MAPA_MESES_GLOBAL)
-        
+
+        # --- NORMALIZAÇÃO DO PROGRAMA DE PESQUISA (Medallia x Qualtrics) ---
+        # Mantém o valor original em 'Programa Original' e unifica em 2 baldes.
+        if 'Programa de Pesquisa' in df.columns:
+            df['Programa Original'] = df['Programa de Pesquisa']
+            df['Programa de Pesquisa'] = df['Programa de Pesquisa'].apply(normalizar_programa)
+
         # --- MAPEAMENTO DA FORMA JURÍDICA (NOVO) ---
         if 'Forma Jurídica' in df.columns:
             def map_segmento(val):
@@ -140,6 +326,11 @@ def load_data_classificado(file_path):
         if 'Num OS' in df.columns:
             df['Num OS'] = df['Num OS'].astype(str).str.replace('.0', '', regex=False)
 
+        # --- NORMALIZAÇÃO DO PROGRAMA DE PESQUISA (Medallia x Qualtrics) ---
+        if 'Programa de Pesquisa' in df.columns:
+            df['Programa Original'] = df['Programa de Pesquisa']
+            df['Programa de Pesquisa'] = df['Programa de Pesquisa'].apply(normalizar_programa)
+
         # --- NORMALIZAÇÃO DA PLATAFORMA (NOVO) ---
         # Se o arquivo Classificado já trouxer a coluna, normaliza aqui.
         # Caso contrário, ela será puxada do Geral via Num OS (mais abaixo).
@@ -166,36 +357,18 @@ def filtrar_por_programa(df, coluna_programa, selecao):
         if coluna_programa in df.columns: return df[df[coluna_programa].str.contains("Instala", na=False, case=False)]
     return pd.DataFrame()
 
-# --- KPI CARD (Cores Pastéis) ---
-def criar_card_kpi(titulo, valor, cor_bg="#ffffff"):
+# --- KPI CARD (Premium) ---
+# cor_bg é mantido por compatibilidade com as chamadas antigas (ignorado no visual).
+# destaque=True  -> card escuro (hero, centro das atenções)
+# top_bar=True   -> linha superior em gradiente (KPIs principais)
+def criar_card_kpi(titulo, valor, cor_bg=None, destaque=False, top_bar=False):
+    classe = "kpi-card kpi-dark" if destaque else "kpi-card"
+    barra = '<div class="kpi-topbar"></div>' if (top_bar and not destaque) else ''
     html_card = f"""
-    <div style="
-        background-color: {cor_bg};
-        padding: 10px 5px;
-        border-radius: 8px;
-        box-shadow: 1px 1px 4px rgba(0,0,0,0.05);
-        text-align: center;
-        margin-bottom: 10px;
-        height: 90px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-    ">
-        <p style="
-            font-size: 13px; 
-            color: #555; 
-            margin: 0; 
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        ">{titulo}</p>
-        <p style="
-            font-size: 22px; 
-            font-weight: 800; 
-            color: #333; 
-            margin: 4px 0 0 0;
-        ">{valor}</p>
+    <div class="{classe}">
+        {barra}
+        <p class="kpi-title">{titulo}</p>
+        <p class="kpi-value">{valor}</p>
     </div>
     """
     return st.markdown(html_card, unsafe_allow_html=True)
@@ -239,6 +412,10 @@ def gerar_texto_franquias(df_target):
     return txt
 
 # --- Interface Principal ---
+# Logo da empresa (antes do título). Coloque um arquivo 'logo.png' na mesma pasta.
+if os.path.exists("logo.png"):
+    st.sidebar.image("logo.png", use_container_width=True)
+
 st.sidebar.title("📊 Dashboard de Indicadores NPS")
 
 # --- DATA DE ATUALIZAÇÃO ---
@@ -343,14 +520,14 @@ if df_geral is not None and df_classificado is not None:
     st.markdown("### Indicadores de Performance NPS")
     k1, k2, k3, k4, k5, k6, k7 = st.columns(7)
     
-    with k1: criar_card_kpi("NPS", f"{calcular_nps_score(df_geral_filt):.1f}".replace('.', ','), KPI_BG_NPS)
-    with k2: criar_card_kpi("Respostas", fmt_milhar(len(df_geral_filt)), KPI_BG_VOL)
-    with k3: criar_card_kpi("NPS Pós OS", f"{calcular_nps_score(df_pos_global):.1f}".replace('.', ','), KPI_BG_NPS)
-    with k4: criar_card_kpi("Resp. Pós OS", fmt_milhar(len(df_pos_global)), KPI_BG_VOL)
-    with k5: criar_card_kpi("NPS Instalação", f"{calcular_nps_score(df_inst_global):.1f}".replace('.', ','), KPI_BG_NPS)
-    with k6: criar_card_kpi("Resp. Instalação", fmt_milhar(len(df_inst_global)), KPI_BG_VOL)
+    with k1: criar_card_kpi("NPS", f"{calcular_nps_score(df_geral_filt):.1f}".replace('.', ','), destaque=True)
+    with k2: criar_card_kpi("Respostas", fmt_milhar(len(df_geral_filt)))
+    with k3: criar_card_kpi("NPS Pós OS", f"{calcular_nps_score(df_pos_global):.1f}".replace('.', ','), top_bar=True)
+    with k4: criar_card_kpi("Resp. Pós OS", fmt_milhar(len(df_pos_global)))
+    with k5: criar_card_kpi("NPS Instalação", f"{calcular_nps_score(df_inst_global):.1f}".replace('.', ','), top_bar=True)
+    with k6: criar_card_kpi("Resp. Instalação", fmt_milhar(len(df_inst_global)))
     val_5s = df_geral_filt['Avaliação do Técnico'].mean()
-    with k7: criar_card_kpi("5Star", f"{val_5s:.2f}".replace('.', ',') if pd.notnull(val_5s) else "-", KPI_BG_5ST)
+    with k7: criar_card_kpi("5Star", f"{val_5s:.2f}".replace('.', ',') if pd.notnull(val_5s) else "-", top_bar=True)
     st.markdown("---")
 
     # --- ABAS ---
