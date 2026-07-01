@@ -78,8 +78,8 @@ h4, h5, h6 { color: var(--ink) !important; font-weight: 700 !important; }
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: 12px;
-    padding: 16px 10px;
-    min-height: 96px;
+    padding: 14px 8px;
+    min-height: 92px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -98,11 +98,12 @@ h4, h5, h6 { color: var(--ink) !important; font-weight: 700 !important; }
     background: linear-gradient(90deg, var(--navy), var(--blue2));
 }
 .kpi-title {
-    font-size: 11px; font-weight: 600; color: var(--muted);
-    text-transform: uppercase; letter-spacing: .5px; margin: 0;
+    font-size: 10px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .3px; margin: 0;
+    line-height: 1.2; word-break: break-word;
 }
 .kpi-value {
-    font-size: 26px; font-weight: 800; color: var(--navy);
+    font-size: 22px; font-weight: 800; color: var(--navy);
     margin: 6px 0 0 0; line-height: 1.1;
 }
 
@@ -453,11 +454,17 @@ if os.path.exists("logo.png"):
     with _lc2:
         st.image("logo.png", use_container_width=True)
 
-st.sidebar.title("NPS")
+st.sidebar.markdown(
+    "<h1 style='text-align:center; color:var(--navy); margin:6px 0 0 0;'>NPS</h1>",
+    unsafe_allow_html=True
+)
 
 # --- DATA DE ATUALIZAÇÃO ---
 data_atualizacao = ler_data_atualizacao()
-st.sidebar.markdown(f"**Atualizado em:** {data_atualizacao}")
+st.sidebar.markdown(
+    f"<p style='text-align:center; color:var(--muted); margin:2px 0 0 0; font-size:12px;'>Atualizado em: {data_atualizacao}</p>",
+    unsafe_allow_html=True
+)
 st.sidebar.markdown("---")
 
 df_geral = load_data_geral(ARQUIVO_GERAL)
@@ -568,14 +575,11 @@ if df_geral is not None and df_classificado is not None:
         kpi_specs.append({"t": f"Resp. {prog}", "v": fmt_milhar(len(df_prog))})
     kpi_specs.append({"t": "5Star", "v": f"{val_5s:.2f}".replace('.', ',') if pd.notnull(val_5s) else "-", "top": True})
 
-    # Renderiza em linhas de no máximo 7 cards
-    POR_LINHA = 7
-    for i in range(0, len(kpi_specs), POR_LINHA):
-        bloco = kpi_specs[i:i + POR_LINHA]
-        cols = st.columns(len(bloco))
-        for col, spec in zip(cols, bloco):
-            with col:
-                criar_card_kpi(spec["t"], spec["v"], destaque=spec.get("dark", False), top_bar=spec.get("top", False))
+    # Renderiza TODOS os KPIs numa única linha (lado a lado)
+    cols = st.columns(len(kpi_specs))
+    for col, spec in zip(cols, kpi_specs):
+        with col:
+            criar_card_kpi(spec["t"], spec["v"], destaque=spec.get("dark", False), top_bar=spec.get("top", False))
     st.markdown("---")
 
     # --- ABAS ---
@@ -632,7 +636,7 @@ if df_geral is not None and df_classificado is not None:
                     ticktext=text_x
                 )
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, theme=None)
 
             col_a, col_b, col_c = st.columns(3)
             def criar_tabela_cat_simples(nome, icone, cor):
@@ -684,7 +688,7 @@ if df_geral is not None and df_classificado is not None:
             
             fig = px.imshow(piv_heat, labels=dict(x="Mês", y="Categoria", color="Qtd"), color_continuous_scale='Blues', text_auto=True, aspect="auto", title="Mapa de Calor: Categoria x Mês")
             fig.update_layout(title_font=dict(size=14))
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, theme=None)
             st.markdown("---")
             st.markdown("### 📋 Top 5 Ofensores")
             for cat in piv_heat.index:
@@ -747,7 +751,7 @@ if df_geral is not None and df_classificado is not None:
                         textposition='outside'
                     )])
                     fig.update_layout(margin=dict(t=40, b=20, l=120, r=120), title_text="Distribuição por Motivo", title_font=dict(size=14))
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, use_container_width=True, theme=None)
                 
                 if 'Num OS' in df_fin.columns and 'Num OS' in df_geral.columns:
                     cols_source = ['Num OS', 'Comentário NPS Ecohouse', 'Franquia', 'Nome do Técnico', 'Segmento']
@@ -824,7 +828,7 @@ if df_geral is not None and df_classificado is not None:
                         height=350,
                         title_font=dict(size=14)
                     )
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, use_container_width=True, theme=None)
 
             st.divider()
             st.subheader("🔎 Filtro de Detalhamento e Extrato")
@@ -919,7 +923,7 @@ if df_geral is not None and df_classificado is not None:
                     ticktext=text_x_tc
                 )
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, theme=None)
             
             st.markdown("---")
             # --- CORREÇÃO AQUI: Tratamento do NaN/Float no sorted() ---
