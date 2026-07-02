@@ -84,8 +84,8 @@ h4, h5, h6 { color: var(--ink) !important; font-weight: 600 !important; }
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: 12px;
-    padding: 14px 10px; 
-    height: 115px; 
+    padding: 12px 10px; 
+    height: 105px; /* Altura ajustada para o novo tamanho da fonte */
     width: 100%;
     box-sizing: border-box;
     display: flex;
@@ -109,21 +109,21 @@ h4, h5, h6 { color: var(--ink) !important; font-weight: 600 !important; }
 /* Textos do KPI */
 .kpi-title {
     font-size: 12px; 
-    font-weight: 700 !important; /* Negrito adicionado */
+    font-weight: 700 !important; 
     color: var(--muted);
     letter-spacing: 0.2px; margin: 0 0 6px 0; 
     line-height: 1.2; overflow-wrap: normal; word-break: normal;
 }
 .kpi-value {
-    font-size: 34px !important; /* Nota muito maior */
-    font-weight: 800 !important; /* Extra-bold para evidência */
+    font-size: 26px !important; /* Tamanho da nota equilibrado (menor que o anterior, maior que o padrão) */
+    font-weight: 800 !important; 
     color: var(--navy);
     margin: 4px 0; 
     line-height: 1;
 }
 .kpi-sub {
     font-size: 10px; font-weight: 500; color: var(--muted);
-    margin: 8px 0 0 0; 
+    margin: 6px 0 0 0; 
     line-height: 1;
 }
 
@@ -144,7 +144,6 @@ h4, h5, h6 { color: var(--ink) !important; font-weight: 600 !important; }
 .kpi-bg-green { background-color: #e6f4ea !important; border-color: #ceead6 !important; }
 .kpi-bg-yellow { background-color: #fef7e0 !important; border-color: #fde293 !important; }
 .kpi-bg-red { background-color: #fce8e6 !important; border-color: #fad2cf !important; }
-/* Manter a cor do texto azul escuro para dar contraste e manter legibilidade sobre o tom pastel */
 .kpi-bg-green .kpi-value, .kpi-bg-yellow .kpi-value, .kpi-bg-red .kpi-value { color: var(--navy) !important; }
 
 /* ---- Botões (primário e download) ---- */
@@ -587,7 +586,7 @@ if df_geral is not None and df_classificado is not None:
     kpi_specs.append({
         "t": "5Star", 
         "v": f"{val_5s:.2f}".replace('.', ',') if pd.notnull(val_5s) else "-", 
-        "top": False, # Desativado o topbar para não conflitar com a cor de fundo pastel
+        "top": False, 
         "extra_class": classe_cor_5star
     })
 
@@ -940,7 +939,6 @@ if df_geral is not None and df_classificado is not None:
         if not df_tc.empty and 'Avaliação do Técnico' in df_tc.columns:
             media_val = df_tc['Avaliação do Técnico'].mean()
             
-            # Lógica de Cor também aplicada para o card da aba de Técnicos
             classe_aba_5star = ""
             if pd.notnull(media_val):
                 if media_val >= 4.50:
