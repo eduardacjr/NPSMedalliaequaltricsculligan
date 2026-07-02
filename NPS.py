@@ -84,8 +84,8 @@ h4, h5, h6 { color: var(--ink) !important; font-weight: 600 !important; }
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: 12px;
-    padding: 14px 10px; /* Mais padding para respiro */
-    height: 115px; /* Altura aumentada para melhor distribuição */
+    padding: 14px 10px; 
+    height: 115px; 
     width: 100%;
     box-sizing: border-box;
     display: flex;
@@ -105,20 +105,25 @@ h4, h5, h6 { color: var(--ink) !important; font-weight: 600 !important; }
     position: absolute; top: 0; left: 0; right: 0; height: 4px;
     background: linear-gradient(90deg, var(--navy), var(--blue2));
 }
+
+/* Textos do KPI */
 .kpi-title {
-    font-size: 11px; font-weight: 500; color: var(--muted);
-    letter-spacing: 0.2px; margin: 0 0 6px 0; /* Espaçamento inferior */
+    font-size: 12px; 
+    font-weight: 700 !important; /* Negrito adicionado */
+    color: var(--muted);
+    letter-spacing: 0.2px; margin: 0 0 6px 0; 
     line-height: 1.2; overflow-wrap: normal; word-break: normal;
 }
 .kpi-value {
-    font-size: 26px; /* Nota muito mais em evidência */
-    font-weight: 700; color: var(--navy);
-    margin: 4px 0; /* Respiro em cima e embaixo da nota */
+    font-size: 34px !important; /* Nota muito maior */
+    font-weight: 800 !important; /* Extra-bold para evidência */
+    color: var(--navy);
+    margin: 4px 0; 
     line-height: 1;
 }
 .kpi-sub {
-    font-size: 10px; font-weight: 400; color: var(--muted);
-    margin: 8px 0 0 0; /* Espaçamento superior empurrando o texto para baixo */
+    font-size: 10px; font-weight: 500; color: var(--muted);
+    margin: 8px 0 0 0; 
     line-height: 1;
 }
 
@@ -134,6 +139,13 @@ h4, h5, h6 { color: var(--ink) !important; font-weight: 600 !important; }
 .kpi-dark:hover {
     box-shadow: 0 6px 12px rgba(10,42,102,.28), 0 20px 40px rgba(10,42,102,.32);
 }
+
+/* ---- Classes Dinâmicas (Tons Pastéis Premium) para 5Star ---- */
+.kpi-bg-green { background-color: #e6f4ea !important; border-color: #ceead6 !important; }
+.kpi-bg-yellow { background-color: #fef7e0 !important; border-color: #fde293 !important; }
+.kpi-bg-red { background-color: #fce8e6 !important; border-color: #fad2cf !important; }
+/* Manter a cor do texto azul escuro para dar contraste e manter legibilidade sobre o tom pastel */
+.kpi-bg-green .kpi-value, .kpi-bg-yellow .kpi-value, .kpi-bg-red .kpi-value { color: var(--navy) !important; }
 
 /* ---- Botões (primário e download) ---- */
 .stButton > button, .stDownloadButton > button {
@@ -230,10 +242,6 @@ CORES_BLUES = [
     '#08306b', '#08519c', '#2171b5', '#4292c6', 
     '#6baed6', '#9ecae1', '#c6dbef', '#deebf7'
 ]
-
-KPI_BG_NPS = "#e3f2fd"   
-KPI_BG_VOL = "#f5f5f5"   
-KPI_BG_5ST = "#e8f5e9"   
 
 # Constantes de nomes de arquivo
 ARQUIVO_GERAL = "NPS Geral.xlsx"
@@ -396,11 +404,15 @@ def listar_programas(df):
     ordenados += [p for p in sorted(presentes) if p not in ORDEM_PROGRAMAS]
     return ordenados
 
-# --- KPI CARD (Premium) COM SUPORTE A SUB-VALOR ---
-def criar_card_kpi(titulo, valor, sub_valor=None, destaque=False, top_bar=False):
-    classe = "kpi-card kpi-dark" if destaque else "kpi-card"
+# --- KPI CARD (Premium) COM SUPORTE A CLASSE EXTRA ---
+def criar_card_kpi(titulo, valor, sub_valor=None, destaque=False, top_bar=False, extra_class=""):
+    classe = "kpi-card"
+    if destaque:
+        classe += " kpi-dark"
+    if extra_class:
+        classe += f" {extra_class}"
+        
     barra = '<div class="kpi-topbar"></div>' if (top_bar and not destaque) else ''
-    
     sub_html = f'<p class="kpi-sub">{sub_valor}</p>' if sub_valor else ''
     
     html_card = (
@@ -545,7 +557,16 @@ if df_geral is not None and df_classificado is not None:
     programas_presentes = listar_programas(df_geral_filt)
     val_5s = df_geral_filt['Avaliação do Técnico'].mean() if 'Avaliação do Técnico' in df_geral_filt.columns else None
 
-    # Monta a lista de KPIs integrando Volume com Textos Normalizados
+    # Lógica de Cores para o 5Star
+    classe_cor_5star = ""
+    if pd.notnull(val_5s):
+        if val_5s >= 4.50:
+            classe_cor_5star = "kpi-bg-green"
+        elif val_5s >= 4.40:
+            classe_cor_5star = "kpi-bg-yellow"
+        else:
+            classe_cor_5star = "kpi-bg-red"
+
     kpi_specs = [
         {
             "t": "NPS Geral", 
@@ -566,14 +587,22 @@ if df_geral is not None and df_classificado is not None:
     kpi_specs.append({
         "t": "5Star", 
         "v": f"{val_5s:.2f}".replace('.', ',') if pd.notnull(val_5s) else "-", 
-        "top": True
+        "top": False, # Desativado o topbar para não conflitar com a cor de fundo pastel
+        "extra_class": classe_cor_5star
     })
 
-    # Renderiza os KPIs perfeitamente alinhados e espaçados
+    # Renderiza os KPIs
     cols = st.columns(len(kpi_specs))
     for col, spec in zip(cols, kpi_specs):
         with col:
-            criar_card_kpi(spec["t"], spec["v"], sub_valor=spec.get("sub"), destaque=spec.get("dark", False), top_bar=spec.get("top", False))
+            criar_card_kpi(
+                titulo=spec["t"], 
+                valor=spec["v"], 
+                sub_valor=spec.get("sub"), 
+                destaque=spec.get("dark", False), 
+                top_bar=spec.get("top", False),
+                extra_class=spec.get("extra_class", "")
+            )
     st.markdown("---")
 
     prog_radio_opcoes = ["Geral"] + listar_programas(df_geral)
@@ -910,8 +939,19 @@ if df_geral is not None and df_classificado is not None:
         
         if not df_tc.empty and 'Avaliação do Técnico' in df_tc.columns:
             media_val = df_tc['Avaliação do Técnico'].mean()
+            
+            # Lógica de Cor também aplicada para o card da aba de Técnicos
+            classe_aba_5star = ""
+            if pd.notnull(media_val):
+                if media_val >= 4.50:
+                    classe_aba_5star = "kpi-bg-green"
+                elif media_val >= 4.40:
+                    classe_aba_5star = "kpi-bg-yellow"
+                else:
+                    classe_aba_5star = "kpi-bg-red"
+
             with cm:
-                criar_card_kpi("Média Geral", f"{media_val:.2f}")
+                criar_card_kpi("Média Geral", f"{media_val:.2f}", extra_class=classe_aba_5star)
             
             df_evol = df_tc.groupby('Mes_Ano_Sort')['Avaliação do Técnico'].mean().reset_index()
             fig = px.bar(df_evol, x='Mes_Ano_Sort', y='Avaliação do Técnico', title="Evolução Mensal da Nota", text_auto='.2f', color_discrete_sequence=['#08306b'])
@@ -1033,7 +1073,7 @@ if df_geral is not None and df_classificado is not None:
                     marc = marcadores[idx] if idx < len(marcadores) else '▶️'
                     df_prog = filtrar_por_programa(df_geral_filt, 'Programa de Pesquisa', prog)
                     df_class_prog = filtrar_por_programa(df_class_filt, 'Programa de Pesquisa', prog)
-                    txt_programas += f"{marc} {prog}\n" # Ajustado para tirar o upper do IA também
+                    txt_programas += f"{marc} {prog}\n"
                     txt_programas += f"- NPS: {calcular_nps_score(df_prog):.1f} (Vol: {len(df_prog)})\n"
                     txt_programas += "- Principais Ofensores (Categorias > Subcategorias):\n"
                     txt_programas += f"{gerar_texto_ofensores(df_class_prog)}\n"
