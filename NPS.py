@@ -18,8 +18,8 @@ st.set_page_config(
 # ==========================================================================
 CUSTOM_CSS = """
 <style>
-/* ---- Fonte Inter ---- */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+/* ---- Fonte Limpa e Moderna (Poppins) ---- */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
 /* ---- Paleta corporativa ---- */
 :root {
@@ -39,7 +39,7 @@ CUSTOM_CSS = """
 /* ---- Escala raiz e fonte global ---- */
 html { font-size: 13px; }
 html, body, .stApp, [class*="css"] {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     color: var(--ink);
 }
 
@@ -61,10 +61,10 @@ h2 { font-size: 1.25rem !important; }
 h3 { font-size: 1.05rem !important; }
 h1, h2, h3 {
     color: var(--navy) !important;
-    font-weight: 800 !important;
+    font-weight: 700 !important;
     letter-spacing: -0.01em !important;
 }
-h4, h5, h6 { color: var(--ink) !important; font-weight: 700 !important; }
+h4, h5, h6 { color: var(--ink) !important; font-weight: 600 !important; }
 
 /* ---- Sidebar ---- */
 [data-testid="stSidebar"] {
@@ -83,9 +83,9 @@ h4, h5, h6 { color: var(--ink) !important; font-weight: 700 !important; }
     position: relative;
     background: var(--card);
     border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 8px 6px;
-    height: 95px; /* Ajustado para comportar o subtítulo de volume */
+    border-radius: 12px;
+    padding: 14px 10px; /* Mais padding para respiro */
+    height: 115px; /* Altura aumentada para melhor distribuição */
     width: 100%;
     box-sizing: border-box;
     display: flex;
@@ -102,21 +102,24 @@ h4, h5, h6 { color: var(--ink) !important; font-weight: 700 !important; }
     box-shadow: 0 4px 8px rgba(16,40,90,.08), 0 12px 24px rgba(16,40,90,.10);
 }
 .kpi-topbar {
-    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    position: absolute; top: 0; left: 0; right: 0; height: 4px;
     background: linear-gradient(90deg, var(--navy), var(--blue2));
 }
 .kpi-title {
-    font-size: 9px; font-weight: 700; color: var(--muted);
-    letter-spacing: 0; margin: 0;
+    font-size: 11px; font-weight: 500; color: var(--muted);
+    letter-spacing: 0.2px; margin: 0 0 6px 0; /* Espaçamento inferior */
     line-height: 1.2; overflow-wrap: normal; word-break: normal;
 }
 .kpi-value {
-    font-size: 18px; font-weight: 800; color: var(--navy);
-    margin: 3px 0 0 0; line-height: 1.1;
+    font-size: 26px; /* Nota muito mais em evidência */
+    font-weight: 700; color: var(--navy);
+    margin: 4px 0; /* Respiro em cima e embaixo da nota */
+    line-height: 1;
 }
 .kpi-sub {
-    font-size: 10px; font-weight: 600; color: var(--muted);
-    margin: 4px 0 0 0; line-height: 1;
+    font-size: 10px; font-weight: 400; color: var(--muted);
+    margin: 8px 0 0 0; /* Espaçamento superior empurrando o texto para baixo */
+    line-height: 1;
 }
 
 /* ---- Card de destaque (dark / hero) ---- */
@@ -135,7 +138,7 @@ h4, h5, h6 { color: var(--ink) !important; font-weight: 700 !important; }
 /* ---- Botões (primário e download) ---- */
 .stButton > button, .stDownloadButton > button {
     background: var(--navy); color: #FFFFFF; border: none;
-    border-radius: 9px; font-weight: 600; padding: 8px 18px;
+    border-radius: 9px; font-weight: 500; padding: 8px 18px;
     transition: background .15s ease, transform .15s ease;
 }
 .stButton > button:hover, .stDownloadButton > button:hover {
@@ -153,7 +156,7 @@ h4, h5, h6 { color: var(--ink) !important; font-weight: 700 !important; }
     padding: 8px 16px;
     color: var(--muted);
     border-bottom: 3px solid transparent;
-    font-weight: 600;
+    font-weight: 500;
 }
 [data-testid="stTabs"] button[aria-selected="true"] {
     background: #FFFFFF;
@@ -194,14 +197,14 @@ hr { border-color: var(--line); }
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 # ==========================================================================
-# TEMA GLOBAL DOS GRÁFICOS (Plotly) - fundo transparente + fonte Inter
+# TEMA GLOBAL DOS GRÁFICOS (Plotly) - fundo transparente + fonte Poppins
 # ==========================================================================
 pio.templates["nps_premium"] = go.layout.Template(
     layout=dict(
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(family='Inter, -apple-system, sans-serif', color='#16233F', size=12),
-        title=dict(font=dict(family='Inter, sans-serif', color='#0A2A66')),
+        font=dict(family='Poppins, sans-serif', color='#16233F', size=12),
+        title=dict(font=dict(family='Poppins, sans-serif', color='#0A2A66')),
         xaxis=dict(gridcolor='#E4EBF6', zerolinecolor='#E4EBF6', linecolor='#E4EBF6'),
         yaxis=dict(gridcolor='#E4EBF6', zerolinecolor='#E4EBF6', linecolor='#E4EBF6'),
         legend=dict(bgcolor='rgba(0,0,0,0)'),
@@ -542,26 +545,26 @@ if df_geral is not None and df_classificado is not None:
     programas_presentes = listar_programas(df_geral_filt)
     val_5s = df_geral_filt['Avaliação do Técnico'].mean() if 'Avaliação do Técnico' in df_geral_filt.columns else None
 
-    # Monta a lista de KPIs integrando Volume
+    # Monta a lista de KPIs integrando Volume com Textos Normalizados
     kpi_specs = [
         {
-            "t": "NPS GERAL", 
+            "t": "NPS Geral", 
             "v": f"{calcular_nps_score(df_geral_filt):.1f}".replace('.', ','), 
-            "sub": f"Vol: {fmt_milhar(len(df_geral_filt))}", 
+            "sub": f"Vol. Respostas: {fmt_milhar(len(df_geral_filt))}", 
             "dark": True
         }
     ]
     for prog in programas_presentes:
         df_prog = filtrar_por_programa(df_geral_filt, 'Programa de Pesquisa', prog)
         kpi_specs.append({
-            "t": f"NPS {prog.upper()}", 
+            "t": f"NPS {prog}", 
             "v": f"{calcular_nps_score(df_prog):.1f}".replace('.', ','), 
-            "sub": f"Vol: {fmt_milhar(len(df_prog))}", 
+            "sub": f"Vol. Respostas: {fmt_milhar(len(df_prog))}", 
             "top": True
         })
     
     kpi_specs.append({
-        "t": "5STAR", 
+        "t": "5Star", 
         "v": f"{val_5s:.2f}".replace('.', ',') if pd.notnull(val_5s) else "-", 
         "top": True
     })
@@ -741,7 +744,6 @@ if df_geral is not None and df_classificado is not None:
                     fig.update_layout(margin=dict(t=40, b=20, l=120, r=120), title_text="Distribuição por Motivo", title_font=dict(size=14))
                     st.plotly_chart(fundo_transparente(fig), use_container_width=True, theme=None)
                 
-                # NOVO: Tabela com o volume absoluto e % por franquia
                 st.markdown("---")
                 st.markdown("#### 📊 Volume por Franquia (Absoluto e %)")
                 
@@ -1031,7 +1033,7 @@ if df_geral is not None and df_classificado is not None:
                     marc = marcadores[idx] if idx < len(marcadores) else '▶️'
                     df_prog = filtrar_por_programa(df_geral_filt, 'Programa de Pesquisa', prog)
                     df_class_prog = filtrar_por_programa(df_class_filt, 'Programa de Pesquisa', prog)
-                    txt_programas += f"{marc} {prog.upper()}\n"
+                    txt_programas += f"{marc} {prog}\n" # Ajustado para tirar o upper do IA também
                     txt_programas += f"- NPS: {calcular_nps_score(df_prog):.1f} (Vol: {len(df_prog)})\n"
                     txt_programas += "- Principais Ofensores (Categorias > Subcategorias):\n"
                     txt_programas += f"{gerar_texto_ofensores(df_class_prog)}\n"
