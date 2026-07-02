@@ -83,9 +83,9 @@ h4, h5, h6 { color: var(--ink) !important; font-weight: 600 !important; }
     position: relative;
     background: var(--card);
     border: 1px solid var(--line);
-    border-radius: 12px;
-    padding: 12px 10px; 
-    height: 105px; /* Altura ajustada para o novo tamanho da fonte */
+    border-radius: 10px;
+    padding: 10px 8px; /* Reduzido para encaixar melhor a fonte nova */
+    height: 85px; /* Altura ajustada para o tamanho menor e clean da fonte */
     width: 100%;
     box-sizing: border-box;
     display: flex;
@@ -102,28 +102,28 @@ h4, h5, h6 { color: var(--ink) !important; font-weight: 600 !important; }
     box-shadow: 0 4px 8px rgba(16,40,90,.08), 0 12px 24px rgba(16,40,90,.10);
 }
 .kpi-topbar {
-    position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
     background: linear-gradient(90deg, var(--navy), var(--blue2));
 }
 
 /* Textos do KPI */
 .kpi-title {
-    font-size: 12px; 
+    font-size: 11px; 
     font-weight: 700 !important; 
     color: var(--muted);
-    letter-spacing: 0.2px; margin: 0 0 6px 0; 
+    letter-spacing: 0.2px; margin: 0 0 4px 0; 
     line-height: 1.2; overflow-wrap: normal; word-break: normal;
 }
 .kpi-value {
-    font-size: 26px !important; /* Tamanho da nota equilibrado (menor que o anterior, maior que o padrão) */
-    font-weight: 800 !important; 
+    font-size: 18px !important; /* Agora sim, um meio termo elegante e corporativo */
+    font-weight: 700 !important; /* Bold padrão, sem exageros */
     color: var(--navy);
-    margin: 4px 0; 
+    margin: 2px 0; 
     line-height: 1;
 }
 .kpi-sub {
     font-size: 10px; font-weight: 500; color: var(--muted);
-    margin: 6px 0 0 0; 
+    margin: 4px 0 0 0; 
     line-height: 1;
 }
 
