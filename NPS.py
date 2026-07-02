@@ -85,7 +85,7 @@ h4, h5, h6 { color: var(--ink) !important; font-weight: 700 !important; }
     border: 1px solid var(--line);
     border-radius: 10px;
     padding: 8px 6px;
-    height: 82px;
+    height: 95px; /* Ajustado para comportar o subtítulo de volume */
     width: 100%;
     box-sizing: border-box;
     display: flex;
@@ -106,13 +106,17 @@ h4, h5, h6 { color: var(--ink) !important; font-weight: 700 !important; }
     background: linear-gradient(90deg, var(--navy), var(--blue2));
 }
 .kpi-title {
-    font-size: 8px; font-weight: 700; color: var(--muted);
+    font-size: 9px; font-weight: 700; color: var(--muted);
     letter-spacing: 0; margin: 0;
     line-height: 1.2; overflow-wrap: normal; word-break: normal;
 }
 .kpi-value {
-    font-size: 16px; font-weight: 800; color: var(--navy);
+    font-size: 18px; font-weight: 800; color: var(--navy);
     margin: 3px 0 0 0; line-height: 1.1;
+}
+.kpi-sub {
+    font-size: 10px; font-weight: 600; color: var(--muted);
+    margin: 4px 0 0 0; line-height: 1;
 }
 
 /* ---- Card de destaque (dark / hero) ---- */
@@ -123,6 +127,7 @@ h4, h5, h6 { color: var(--ink) !important; font-weight: 700 !important; }
 }
 .kpi-dark .kpi-title { color: #B9CCEF; }
 .kpi-dark .kpi-value { color: #FFFFFF; }
+.kpi-dark .kpi-sub { color: #A0BCE0; }
 .kpi-dark:hover {
     box-shadow: 0 6px 12px rgba(10,42,102,.28), 0 20px 40px rgba(10,42,102,.32);
 }
@@ -190,7 +195,6 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 # ==========================================================================
 # TEMA GLOBAL DOS GRÁFICOS (Plotly) - fundo transparente + fonte Inter
-# Aplica-se automaticamente a TODOS os gráficos (px e go).
 # ==========================================================================
 pio.templates["nps_premium"] = go.layout.Template(
     layout=dict(
@@ -206,7 +210,6 @@ pio.templates["nps_premium"] = go.layout.Template(
 pio.templates.default = "plotly+nps_premium"
 
 def fundo_transparente(fig):
-    """Força fundo transparente na figura (garante que o gráfico use a cor do app)."""
     fig.update_layout(
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)'
@@ -225,7 +228,6 @@ CORES_BLUES = [
     '#6baed6', '#9ecae1', '#c6dbef', '#deebf7'
 ]
 
-# Cores Pastéis para os KPIs
 KPI_BG_NPS = "#e3f2fd"   
 KPI_BG_VOL = "#f5f5f5"   
 KPI_BG_5ST = "#e8f5e9"   
@@ -249,10 +251,6 @@ def classificar_nps(nota):
     else: return "Detrator"
 
 def normalizar_programa(val):
-    """Padroniza a grafia dos programas SEM juntar categorias distintas.
-    Qualtrics: 'Maintenance', 'Reparo', 'Instalação' (mantidos separados).
-    Medallia (legado): 'Pós OS', 'Instalação'.
-    Apenas uniformiza variações de grafia (acentos/caixa) de cada valor."""
     if pd.isna(val): return val
     v = str(val).strip()
     v_low = v.lower()
@@ -285,7 +283,6 @@ def ler_data_atualizacao():
             return f.read().strip()
     return "Data n/d"
 
-# Função para converter DataFrame em Excel Bytes para download
 def convert_df_to_excel(df):
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
@@ -318,13 +315,10 @@ def load_data_geral(file_path):
         df['Mes_Num'] = df['Data da resposta local'].dt.month
         df['Mes_Nome'] = df['Mes_Num'].map(MAPA_MESES_GLOBAL)
 
-        # --- NORMALIZAÇÃO DO PROGRAMA DE PESQUISA (Medallia x Qualtrics) ---
-        # Mantém o valor original em 'Programa Original' e unifica em 2 baldes.
         if 'Programa de Pesquisa' in df.columns:
             df['Programa Original'] = df['Programa de Pesquisa']
             df['Programa de Pesquisa'] = df['Programa de Pesquisa'].apply(normalizar_programa)
 
-        # --- MAPEAMENTO DA FORMA JURÍDICA (NOVO) ---
         if 'Forma Jurídica' in df.columns:
             def map_segmento(val):
                 if pd.isna(val): return 'Não Informado'
@@ -337,8 +331,6 @@ def load_data_geral(file_path):
         else:
             df['Segmento'] = 'Não Informado'
 
-        # --- NORMALIZAÇÃO DA PLATAFORMA (NOVO) ---
-        # Medallia = visão legado | Qualtrics = visão atual
         if 'Plataforma' in df.columns:
             df['Plataforma'] = df['Plataforma'].astype(str).str.strip()
             df.loc[df['Plataforma'].isin(['nan', 'None', 'NaN', '']), 'Plataforma'] = 'Não Informado'
@@ -365,14 +357,10 @@ def load_data_classificado(file_path):
         if 'Num OS' in df.columns:
             df['Num OS'] = df['Num OS'].astype(str).str.replace('.0', '', regex=False)
 
-        # --- NORMALIZAÇÃO DO PROGRAMA DE PESQUISA (Medallia x Qualtrics) ---
         if 'Programa de Pesquisa' in df.columns:
             df['Programa Original'] = df['Programa de Pesquisa']
             df['Programa de Pesquisa'] = df['Programa de Pesquisa'].apply(normalizar_programa)
 
-        # --- NORMALIZAÇÃO DA PLATAFORMA (NOVO) ---
-        # Se o arquivo Classificado já trouxer a coluna, normaliza aqui.
-        # Caso contrário, ela será puxada do Geral via Num OS (mais abaixo).
         if 'Plataforma' in df.columns:
             df['Plataforma'] = df['Plataforma'].astype(str).str.strip()
             df.loc[df['Plataforma'].isin(['nan', 'None', 'NaN', '']), 'Plataforma'] = 'Não Informado'
@@ -391,17 +379,13 @@ def load_data_classificado(file_path):
 def filtrar_por_programa(df, coluna_programa, selecao):
     if selecao == "Geral": return df
     if coluna_programa not in df.columns: return pd.DataFrame()
-    # Instalação usa 'contains' por segurança (variações de grafia)
     if selecao == "Instalação":
         return df[df[coluna_programa].astype(str).str.contains("Instala", na=False, case=False)]
-    # Demais programas: correspondência exata (Pós OS, Maintenance, Reparo, etc.)
     return df[df[coluna_programa] == selecao]
 
-# Ordem de preferência para exibir os programas
 ORDEM_PROGRAMAS = ['Pós OS', 'Maintenance', 'Reparo', 'Instalação']
 
 def listar_programas(df):
-    """Retorna os programas presentes no df, ordenados pela preferência."""
     if 'Programa de Pesquisa' not in df.columns:
         return []
     presentes = [p for p in df['Programa de Pesquisa'].dropna().unique()]
@@ -409,19 +393,18 @@ def listar_programas(df):
     ordenados += [p for p in sorted(presentes) if p not in ORDEM_PROGRAMAS]
     return ordenados
 
-# --- KPI CARD (Premium) ---
-# cor_bg é mantido por compatibilidade com as chamadas antigas (ignorado no visual).
-# destaque=True  -> card escuro (hero, centro das atenções)
-# top_bar=True   -> linha superior em gradiente (KPIs principais)
-def criar_card_kpi(titulo, valor, cor_bg=None, destaque=False, top_bar=False):
+# --- KPI CARD (Premium) COM SUPORTE A SUB-VALOR ---
+def criar_card_kpi(titulo, valor, sub_valor=None, destaque=False, top_bar=False):
     classe = "kpi-card kpi-dark" if destaque else "kpi-card"
     barra = '<div class="kpi-topbar"></div>' if (top_bar and not destaque) else ''
-    # HTML em uma única linha e SEM indentação, para o Streamlit não
-    # interpretar como bloco de código (senão as tags aparecem cruas).
+    
+    sub_html = f'<p class="kpi-sub">{sub_valor}</p>' if sub_valor else ''
+    
     html_card = (
         f'<div class="{classe}">{barra}'
         f'<p class="kpi-title">{titulo}</p>'
-        f'<p class="kpi-value">{valor}</p></div>'
+        f'<p class="kpi-value">{valor}</p>'
+        f'{sub_html}</div>'
     )
     return st.markdown(html_card, unsafe_allow_html=True)
 
@@ -464,7 +447,6 @@ def gerar_texto_franquias(df_target):
     return txt
 
 # --- Interface Principal ---
-# Logo da empresa (antes do título). Coloque um arquivo 'logo.png' na mesma pasta.
 if os.path.exists("logo.png"):
     _lc1, _lc2, _lc3 = st.sidebar.columns([1, 2, 1])
     with _lc2:
@@ -475,7 +457,6 @@ st.sidebar.markdown(
     unsafe_allow_html=True
 )
 
-# --- DATA DE ATUALIZAÇÃO ---
 data_atualizacao = ler_data_atualizacao()
 st.sidebar.markdown(
     f"<p style='text-align:center; color:var(--muted); margin:2px 0 0 0; font-size:12px;'>Atualizado em: {data_atualizacao}</p>",
@@ -488,29 +469,23 @@ df_classificado = load_data_classificado(ARQUIVO_CLASSIFICADO)
 
 if df_geral is not None and df_classificado is not None:
     
-    # GARANTIR QUE SEGMENTO E PLATAFORMA ESTEJAM NO CLASSIFICADO PARA OS FILTROS
     if 'Num OS' in df_geral.columns and 'Num OS' in df_classificado.columns:
         if 'Segmento' in df_geral.columns and 'Segmento' not in df_classificado.columns:
             temp_seg = df_geral[['Num OS', 'Segmento']].drop_duplicates('Num OS')
             df_classificado = df_classificado.merge(temp_seg, on='Num OS', how='left')
             df_classificado['Segmento'] = df_classificado['Segmento'].fillna('Não Informado')
 
-        # NOVO: puxa a Plataforma (Medallia/Qualtrics) do Geral p/ o Classificado
         if 'Plataforma' in df_geral.columns and 'Plataforma' not in df_classificado.columns:
             temp_plat = df_geral[['Num OS', 'Plataforma']].drop_duplicates('Num OS')
             df_classificado = df_classificado.merge(temp_plat, on='Num OS', how='left')
             df_classificado['Plataforma'] = df_classificado['Plataforma'].fillna('Não Informado')
 
-    # --- FILTROS GLOBAIS ---
-    # NOVO FILTRO GLOBAL: Plataforma (Medallia Legado x Qualtrics Atual)
     plataformas_disp = sorted([str(p) for p in df_geral['Plataforma'].dropna().unique()])
     plataformas_selecionadas = st.sidebar.multiselect(
         "🛰️ Plataforma (Sistema):",
         options=['Todas'] + plataformas_disp,
         default=['Todas'],
-        help="Medallia = visão legado | Qualtrics = visão atual. "
-             "Selecione ambas (ou 'Todas') para a visão consolidada, "
-             "ou uma delas para isolar cada sistema."
+        help="Medallia = visão legado | Qualtrics = visão atual. Selecione ambas (ou 'Todas') para a visão consolidada."
     )
 
     anos_disponiveis = sorted(df_geral['Ano'].dropna().unique().astype(int))
@@ -521,14 +496,12 @@ if df_geral is not None and df_classificado is not None:
     opcoes_meses = ['Todos'] + meses_ordem
     meses_selecionados = st.sidebar.multiselect("Selecione o(s) Mês(es):", options=opcoes_meses, default=['Todos'])
 
-    # NOVO FILTRO: Segmento
     if 'Segmento' in df_geral.columns:
         segmentos_disp = sorted([str(s) for s in df_geral['Segmento'].dropna().unique()])
         segmentos_selecionados = st.sidebar.multiselect("Selecione o Segmento:", options=['Todos'] + segmentos_disp, default=['Todos'])
     else:
         segmentos_selecionados = ['Todos']
 
-    # FILTRO: Franquias
     franquias_geral = set(df_geral['Franquia'].dropna().unique())
     franquias_class = set(df_classificado['Franquia'].dropna().unique()) if 'Franquia' in df_classificado.columns else set()
     todas_franquias = sorted(list(franquias_geral.union(franquias_class)))
@@ -536,15 +509,12 @@ if df_geral is not None and df_classificado is not None:
     usar_todas_franquias = st.sidebar.checkbox("Selecionar Todas as Franquias", value=True)
     if usar_todas_franquias:
         franquias_selecionadas = todas_franquias
-        st.sidebar.info(f"Todas as {len(todas_franquias)} franquias selecionadas.")
     else:
         franquias_selecionadas = st.sidebar.multiselect("Selecione as Franquias:", options=todas_franquias, default=[])
 
-    # --- APLICAÇÃO DOS FILTROS ---
     df_geral_filt = df_geral.copy()
     df_class_filt = df_classificado.copy()
 
-    # FILTRO GLOBAL DE PLATAFORMA (aplica no Geral E no Classificado)
     if "Todas" not in plataformas_selecionadas:
         df_geral_filt = df_geral_filt[df_geral_filt['Plataforma'].isin(plataformas_selecionadas)]
         if 'Plataforma' in df_class_filt.columns:
@@ -572,28 +542,37 @@ if df_geral is not None and df_classificado is not None:
     programas_presentes = listar_programas(df_geral_filt)
     val_5s = df_geral_filt['Avaliação do Técnico'].mean() if 'Avaliação do Técnico' in df_geral_filt.columns else None
 
-    # Monta a lista de KPIs dinamicamente:
-    # NPS geral (hero) + Respostas + (NPS/Resp por programa) + 5Star
+    # Monta a lista de KPIs integrando Volume
     kpi_specs = [
-        {"t": "NPS", "v": f"{calcular_nps_score(df_geral_filt):.1f}".replace('.', ','), "dark": True},
-        {"t": "Respostas", "v": fmt_milhar(len(df_geral_filt))},
+        {
+            "t": "NPS GERAL", 
+            "v": f"{calcular_nps_score(df_geral_filt):.1f}".replace('.', ','), 
+            "sub": f"Vol: {fmt_milhar(len(df_geral_filt))}", 
+            "dark": True
+        }
     ]
     for prog in programas_presentes:
         df_prog = filtrar_por_programa(df_geral_filt, 'Programa de Pesquisa', prog)
-        kpi_specs.append({"t": f"NPS {prog}", "v": f"{calcular_nps_score(df_prog):.1f}".replace('.', ','), "top": True})
-        kpi_specs.append({"t": f"Resp. {prog}", "v": fmt_milhar(len(df_prog))})
-    kpi_specs.append({"t": "5Star", "v": f"{val_5s:.2f}".replace('.', ',') if pd.notnull(val_5s) else "-", "top": True})
+        kpi_specs.append({
+            "t": f"NPS {prog.upper()}", 
+            "v": f"{calcular_nps_score(df_prog):.1f}".replace('.', ','), 
+            "sub": f"Vol: {fmt_milhar(len(df_prog))}", 
+            "top": True
+        })
+    
+    kpi_specs.append({
+        "t": "5STAR", 
+        "v": f"{val_5s:.2f}".replace('.', ',') if pd.notnull(val_5s) else "-", 
+        "top": True
+    })
 
-    # Renderiza TODOS os KPIs numa única linha (lado a lado)
+    # Renderiza os KPIs perfeitamente alinhados e espaçados
     cols = st.columns(len(kpi_specs))
     for col, spec in zip(cols, kpi_specs):
         with col:
-            criar_card_kpi(spec["t"], spec["v"], destaque=spec.get("dark", False), top_bar=spec.get("top", False))
+            criar_card_kpi(spec["t"], spec["v"], sub_valor=spec.get("sub"), destaque=spec.get("dark", False), top_bar=spec.get("top", False))
     st.markdown("---")
 
-    # --- ABAS ---
-    # Opções ESTÁVEIS de programa (baseadas em toda a base, não no filtro atual)
-    # para evitar erro de session_state quando o filtro de plataforma muda.
     prog_radio_opcoes = ["Geral"] + listar_programas(df_geral)
 
     tabs = st.tabs(["Visão Geral", "Análise Consolidada", "NPS Franquias Detratores e Neutros", "Classificação NPS", "5Star", "Detalhes", "🧠 Análises Avançadas"])
@@ -762,6 +741,26 @@ if df_geral is not None and df_classificado is not None:
                     fig.update_layout(margin=dict(t=40, b=20, l=120, r=120), title_text="Distribuição por Motivo", title_font=dict(size=14))
                     st.plotly_chart(fundo_transparente(fig), use_container_width=True, theme=None)
                 
+                # NOVO: Tabela com o volume absoluto e % por franquia
+                st.markdown("---")
+                st.markdown("#### 📊 Volume por Franquia (Absoluto e %)")
+                
+                df_vol_franquia = df_fin['Franquia'].value_counts().reset_index()
+                df_vol_franquia.columns = ['Franquia', 'Volume Absoluto']
+                tot_vol_franquia = df_vol_franquia['Volume Absoluto'].sum()
+                df_vol_franquia['%'] = (df_vol_franquia['Volume Absoluto'] / tot_vol_franquia * 100).map('{:.1f}%'.format)
+                
+                st.dataframe(df_vol_franquia, use_container_width=True, hide_index=True)
+                
+                excel_data_vol_fr = convert_df_to_excel(df_vol_franquia)
+                st.download_button(
+                    label="📥 Baixar Volumes por Franquia (.xlsx)",
+                    data=excel_data_vol_fr,
+                    file_name="Volume_Franquias_Detratores_Neutros.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="btn_down_frq_vol"
+                )
+
                 if 'Num OS' in df_fin.columns and 'Num OS' in df_geral.columns:
                     cols_source = ['Num OS', 'Comentário NPS Ecohouse', 'Franquia', 'Nome do Técnico', 'Segmento']
                     cols_source = [c for c in cols_source if c in df_geral.columns]
@@ -774,6 +773,8 @@ if df_geral is not None and df_classificado is not None:
                     if 'Segmento_geral' in df_fin.columns: df_fin['Segmento'] = df_fin['Segmento'].fillna(df_fin['Segmento_geral'])
                     if 'Comentário NPS Ecohouse_geral' in df_fin.columns: df_fin['Comentário NPS Ecohouse'] = df_fin['Comentário NPS Ecohouse'].fillna(df_fin['Comentário NPS Ecohouse_geral'])
 
+                st.markdown("---")
+                st.markdown("#### 📄 Extrato Detalhado")
                 cols_ver = ['Data', 'Num OS', 'Franquia', 'Segmento', 'Nome do Técnico', 'Categorização Primária', 'Subcategorização Primária', 'Comentário NPS Ecohouse']
                 cols_fin = [c for c in cols_ver if c in df_fin.columns]
                 
@@ -908,7 +909,7 @@ if df_geral is not None and df_classificado is not None:
         if not df_tc.empty and 'Avaliação do Técnico' in df_tc.columns:
             media_val = df_tc['Avaliação do Técnico'].mean()
             with cm:
-                criar_card_kpi("Média Geral", f"{media_val:.2f}", KPI_BG_5ST)
+                criar_card_kpi("Média Geral", f"{media_val:.2f}")
             
             df_evol = df_tc.groupby('Mes_Ano_Sort')['Avaliação do Técnico'].mean().reset_index()
             fig = px.bar(df_evol, x='Mes_Ano_Sort', y='Avaliação do Técnico', title="Evolução Mensal da Nota", text_auto='.2f', color_discrete_sequence=['#08306b'])
@@ -935,7 +936,6 @@ if df_geral is not None and df_classificado is not None:
             st.plotly_chart(fundo_transparente(fig), use_container_width=True, theme=None)
             
             st.markdown("---")
-            # --- CORREÇÃO AQUI: Tratamento do NaN/Float no sorted() ---
             sel_t = st.selectbox("Técnico:", ['Todos'] + sorted(df_tc['Nome do Técnico'].dropna().astype(str).unique()))
             
             df_tf = df_tc if sel_t == 'Todos' else df_tc[df_tc['Nome do Técnico'] == sel_t]
@@ -1025,7 +1025,6 @@ if df_geral is not None and df_classificado is not None:
                          if 'Classificacao_y' in df_class_filt.columns:
                              df_class_filt['Classificacao'] = df_class_filt['Classificacao'].fillna(df_class_filt['Classificacao_y'])
 
-                # Detalhamento dinâmico por programa (não junta Maintenance/Reparo)
                 txt_programas = ""
                 marcadores = ['🅰️', '🅱️', '🅲️', '🅳️', '🅴️']
                 for idx, prog in enumerate(listar_programas(df_geral_filt)):
@@ -1140,7 +1139,6 @@ Crie um relatório estratégico contendo:
                     delta_nps = nps_b - nps_a
                     delta_vol = vol_b - vol_a
 
-                    # Detalhe por programa dinâmico (união dos programas de A e B)
                     progs_comp = listar_programas(pd.concat([df_a_geral, df_b_geral], ignore_index=True))
                     txt_prog_comp = ""
                     for prog in progs_comp:
